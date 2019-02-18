@@ -1,8 +1,11 @@
 classdef TwoLedModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
-%   Runs epochs in groups of three: each LED is modulated 
-%   independently, then together
+%   Runs epochs in groups of three: each LED is modulated independently, 
+%   then together. 
 %
+% History:
 %   20Jan2019 - SSP - Built off RedBlueSine
+%   17Feb2019 - SSP - Added amp2, rectification, figures and new preview
+% -------------------------------------------------------------------------
 
     properties
         led1                                % 1st LED
@@ -14,9 +17,10 @@ classdef TwoLedModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
         preTime = 250                       % Leading time (ms)
         stimTime = 2000                     % Stimulus time (ms)
         tailTime = 100                      % Trailing stim (ms)
-        period = 500                        % Temporal frequency (Hz)
+        period = 500                        % Modulation period (ms)
         phaseShift = 0                      % Phase shift (degrees)
         temporalClass = 'sinewave'          % Modulation type
+        rectify = false                     % Rectify stimulus (t/f)
         onlineAnalysis = 'extracellular'    % Online analysis type
         numberOfAverages = uint16(12)       % Number of epochs
         interpulseInterval = 0              % Duration between pulses (s)
@@ -54,10 +58,11 @@ classdef TwoLedModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
                 d.isHidden = true;
             end
         end
-        
-            
+                
         function p = getPreview(obj, panel)
-            p = symphonyui.builtin.previews.StimuliPreview(panel, @()createPreviewStimuli(obj));
+            p = edu.washington.riekelab.patterson.previews.LedStimuliPreview(...
+                panel, @()createPreviewStimuli(obj));
+            
             function s = createPreviewStimuli(obj)
                 numPulses = 1;
                 s = cell(numPulses*2, 1);
@@ -69,21 +74,33 @@ classdef TwoLedModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
-            
-            obj.showFigure('symphonyui.builtin.figures.ResponseFigure',...
-                obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
-                obj.rig.getDevice(obj.amp), 'groupBy',{'PlotGroup'},...
-                'recordingType', obj.onlineAnalysis,...
-                'sweepColor', [1, 0.25, 0.25; 0.2, 0.3, 0.9; 0, 0.8, 0.3]);
-            obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure',...
-                obj.rig.getDevice(obj.amp), {@mean, @var}, ...
-                'baselineRegion', [0 obj.preTime], ...
-                'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
+
+            if numel(obj.rig.getDeviceNames('Amp')) < 2
+                obj.showFigure('symphonyui.builtin.figures.ResponseFigure',...
+                    obj.rig.getDevice(obj.amp));
+                obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
+                    obj.rig.getDevice(obj.amp), 'groupBy',{'PlotGroup'},...
+                    'recordingType', obj.onlineAnalysis,...
+                    'sweepColor', [1, 0.25, 0.25; 0.2, 0.3, 0.9; 0, 0.8, 0.3]);
+                if strcmp(obj.onlineAnalysis, 'extracellular')
+                    obj.showFigure('edu.washington.riekelab.patterson.figures.SpikeStatisticsFigure',...
+                        obj.rig.getDevice(obj.amp),...
+                        'measurementRegion', [obj.preTime, obj.preTime+obj.stimTime]);
+                else
+                    obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure',...
+                        obj.rig.getDevice(obj.amp), {@mean, @var}, ...
+                        'baselineRegion', [0 obj.preTime], ...
+                        'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
+                end
+            else
+                obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure',...
+                    obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
+            end
 
             device1 = obj.rig.getDevice(obj.led1);
             device1.background = symphonyui.core.Measurement(...
                 obj.lightMean1, device1.background.displayUnits);
+            
             device2 = obj.rig.getDevice(obj.led2);
             device2.background = symphonyui.core.Measurement(...
                 obj.lightMean2, device2.background.displayUnits);
@@ -91,9 +108,10 @@ classdef TwoLedModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         function [stim1, stim2] = createLedStimulus(obj, pulseNum)
             if strcmp(obj.temporalClass, 'sinewave')
-                gen = symphonyui.builtin.stimuli.SineGenerator();
+                gen = edu.washington.riekelab.patterson.stimuli.SineGenerator();
             else
-                gen = symphonyui.builtin.stimuli.SquareGenerator();
+                gen = edu.washington.riekelab.patterson.stimuli.SquareGenerator();
+
             end
             
             gen.preTime = obj.preTime;
@@ -102,6 +120,7 @@ classdef TwoLedModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.period = obj.period;
             gen.phase = 0;
             gen.mean = obj.lightMean1;
+            gen.rectify = obj.rectify;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led1).background.displayUnits;
 
@@ -120,7 +139,6 @@ classdef TwoLedModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
    
             stim2 = gen.generate();
-     
         end
         
         function prepareEpoch(obj, epoch)
@@ -131,9 +149,14 @@ classdef TwoLedModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
             epoch.addParameter('PlotGroup', cnt);
             
             epoch.addStimulus(obj.rig.getDevice(obj.led1), stim1);
-            epoch.addStimulus(obj.rig.getDevice(obj.led2), stim2);
-            epoch.addResponse(obj.rig.getDevice(obj.amp));
+            if ~strcmp(obj.led1, obj.led2)
+                epoch.addStimulus(obj.rig.getDevice(obj.led2), stim2);
+            end
             
+            epoch.addResponse(obj.rig.getDevice(obj.amp));
+            if numel(obj.rig.getDeviceNames('Amp')) >= 2
+                epoch.addResponse(obj.rig.getDevice(obj.amp2));
+            end
         end
         
         function prepareInterval(obj, interval)
@@ -151,5 +174,15 @@ classdef TwoLedModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
         function tf = shouldContinueRun(obj)
             tf = obj.numEpochsCompleted < obj.numberOfAverages;
         end 
+                
+        function a = get.amp2(obj)
+            amps = obj.rig.getDeviceNames('Amp');
+            if numel(amps) < 2
+                a = '(None)';
+            else
+                i = find(~ismember(amps, obj.amp), 1);
+                a = amps{i};
+            end
+        end
     end    
 end
