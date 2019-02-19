@@ -64,6 +64,11 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         ampType
         onlineAnalysisType = symphonyui.core.PropertyType('char', 'row',...
             {'none', 'extracellular', 'exc', 'inh'})
+        
+        analysisFigure
+        analysisFigureAxes
+        analysisFigureData
+        analysisFigureLines
     end
 
     properties (Constant, Hidden)
@@ -281,7 +286,7 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             % Keys (also legend entries) for each background/stimulus pair
             responsePoints = obj.stimTime * obj.sampleRate / 1e3;
 
-            obj.analysisFigureData = edu.washington.riekelab.patterson.utils.OnlineLinearFigure(...
+            obj.analysisFigureData = edu.washington.riekelab.patterson.utils.OnlineLinearFilter(...
                 responsePoints, obj.sampleRate, obj.frequencyCutoff / 2);
             obj.analysisFigureLines = plot(obj.analysisFigureAxes,...
                 (1:responsePoints) * 1e3 / obj.sampleRate, zeros(1, responsePoints));
