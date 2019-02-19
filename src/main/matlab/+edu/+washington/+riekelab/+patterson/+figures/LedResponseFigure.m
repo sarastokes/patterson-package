@@ -120,6 +120,10 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
                 error(['Epoch does not contain a response for ' obj.device.name]);
             end
             
+            if isempty(obj.stimSweep)
+                obj.stimSweep = cell(1, numel(obj.leds));
+            end
+            
             % Parse and plot response
             response = epoch.getResponse(obj.device);
             [quantities, units] = response.getData();
