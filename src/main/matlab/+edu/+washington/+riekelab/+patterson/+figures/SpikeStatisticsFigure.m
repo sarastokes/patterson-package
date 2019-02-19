@@ -1,5 +1,12 @@
 classdef SpikeStatisticsFigure < symphonyui.core.FigureHandler
-% SSP - 17Feb2019
+    % SPIKESTATISTICSFIGURE
+    %
+    % Description:
+    %   Like ResponseStatisticsFigure but for spikes. Right now, just
+    %   displays the total number of spikes during the measurement region
+    %
+    % SSP - 17Feb2019
+    % ---------------------------------------------------------------------
 
     properties (SetAccess = private)
         device
@@ -26,8 +33,11 @@ classdef SpikeStatisticsFigure < symphonyui.core.FigureHandler
 
         function createUi(obj)
             import appbox.*;
-
-            set(obj.figureHandle, 'Color', 'w');
+            
+            pos = get(obj.figureHandle, 'Position');
+            set(obj.figureHandle,...
+                'Position', [pos(1:3), pos(4)/2],...
+                'Color', 'w');
 
             obj.axHandle = axes(...
                 'Parent', obj.figureHandle,...
@@ -54,7 +64,7 @@ classdef SpikeStatisticsFigure < symphonyui.core.FigureHandler
             quantities = response.getData();
             sampleRate = response.sampleRate.quantityInBaseUnits;
 
-            msToPts = @(t)max(round(t / 1e3 * rate), 1);
+            msToPts = @(t)max(round(t / 1e3 * sampleRate), 1);
 
             if ~isempty(obj.measurementRegion)
                 x1 = msToPts(obj.measurementRegion(1));
