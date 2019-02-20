@@ -38,7 +38,6 @@ classdef MeanResponseFigure < symphonyui.core.FigureHandler
         
         function createUi(obj)
             import appbox.*;
-            iconDir = [fileparts(fileparts(mfilename('fullpath'))), '\+utils\+icons\'];
             toolbar = findall(obj.figureHandle, 'Type', 'uitoolbar');
             storeSweepButton = uipushtool( ...
                 'Parent', toolbar, ...
@@ -47,12 +46,20 @@ classdef MeanResponseFigure < symphonyui.core.FigureHandler
                 'ClickedCallback', @obj.onSelectedStoreSweep);
             setIconImage(storeSweepButton, symphonyui.app.App.getResource('icons/sweep_store.png'));
             
-            clearStoredButton = uipushtool( ...
+            clearSweepButton = uipushtool( ...
                 'Parent', toolbar, ...
                 'TooltipString', 'Clear saved sweep', ...
                 'Separator', 'off', ...
                 'ClickedCallback', @obj.onSelectedClearStored);
-            setIconImage(clearStoredButton, [iconDir, 'Xout.png']);
+            setIconImage(clearSweepButton,...
+                symphonyui.app.App.getResource('icons', 'sweep_clear.png'));
+
+            captureFigureButton = uipushtool(...
+                'Parent', toolbar,...
+                'TooltipString', 'Capture Figure',...
+                'ClickedCallback', @obj.onSelectedCaptureFigure);
+            iconDir = [fileparts(fileparts(mfilename('fullpath'))), '\+icons\'];
+            setIconImage(captureFigureButton, [iconDir, 'save_image.gif']);
             
             obj.axesHandle = axes( ...
                 'Parent', obj.figureHandle, ...
@@ -197,11 +204,16 @@ classdef MeanResponseFigure < symphonyui.core.FigureHandler
             obj.storedSweep.line.delete
         end
 
+        function onSelectedCaptureFigure(obj, ~, ~)
+            [fileName, pathName] = uiputfile('bar.png', 'Save result as');
+            if ~ischar(fileName) || ~ischar(pathName)
+                return;
+            end
+            print(obj.figureHandle, [pathName, fileName], '-dpng', '-r600');
+        end
     end
     
     methods (Static)
-        
-        
         function averages = storedAverages(averages)
             % This method stores means across figure handlers.
             persistent stored;

@@ -73,6 +73,13 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
                 'ClickedCallback', @obj.onSelectedClearSweep);
             setIconImage(clearSweepButton,...
                 symphonyui.app.App.getResource('icons', 'sweep_clear.png'));
+
+            captureFigureButton = uipushtool(...
+                'Parent', toolbar,...
+                'TooltipString', 'Capture Figure',...
+                'ClickedCallback', @obj.onSelectedCaptureFigure);
+            iconDir = [fileparts(fileparts(mfilename('fullpath'))), '\+icons\'];
+            setIconImage(captureFigureButton, [iconDir, 'save_image.gif']);
             
             % ---------------------------------------------------- axes ---
             obj.respAxes = subplot(4,1,1:3,...
@@ -196,6 +203,14 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
                     'HandleVisibility', 'off');
             end
             obj.storedSweep(store);
+        end
+
+        function onSelectedCaptureFigure(obj, ~, ~)
+            [fileName, pathName] = uiputfile('bar.png', 'Save result as');
+            if ~ischar(fileName) || ~ischar(pathName)
+                return;
+            end
+            print(obj.figureHandle, [pathName, fileName], '-dpng', '-r600');
         end
     end
     
