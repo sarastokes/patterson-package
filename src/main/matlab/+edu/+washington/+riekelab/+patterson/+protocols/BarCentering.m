@@ -47,20 +47,6 @@ classdef BarCentering < edu.washington.riekelab.protocols.RiekeLabStageProtocol
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
 
-            rgb = edu.washington.riekelab.patterson.utils.multigradient(...
-                'preset', 'div.cb.spectral.9', 'length', numel(obj.contrasts));
-            
-            if numel(obj.rig.getDeviceNames('Amp')) < 2
-                obj.showFigure('symphonyui.builtin.figures.ResponseFigure',...
-                    obj.rig.getDevice(obj.amp));
-                obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
-                    obj.rig.getDevice(obj.amp), 'groupBy', {'position'},...
-                    'recordingType', obj.onlineAnalysis, 'colors', rgb);
-            else
-                obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure',...
-                    obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
-            end
-            
             % Create the matrix of bar positions.
             numReps = ceil(double(obj.numberOfAverages) / length(obj.positions));
             
@@ -70,6 +56,25 @@ classdef BarCentering < edu.washington.riekelab.protocols.RiekeLabStageProtocol
             % Convert from um to pix
             pos = obj.rig.getDevice('Stage').um2pix(pos);
             obj.xaxis = pos';
+
+            rgb = edu.washington.riekelab.patterson.utils.multigradient(...
+                'preset', 'div.cb.spectral.9', 'length', numel(obj.contrasts));
+            
+            if numel(obj.rig.getDeviceNames('Amp')) < 2
+                obj.showFigure('symphonyui.builtin.figures.ResponseFigure',...
+                    obj.rig.getDevice(obj.amp));
+                obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
+                    obj.rig.getDevice(obj.amp), 'groupBy', {'position'},...
+                    'recordingType', obj.onlineAnalysis, 'colors', rgb);
+                if ~strcmp(obj.onlineAnalysis, 'none')
+                    obj.showFigure('edu.washington.riekelab.patterson.figures.F1F2Figure',...
+                        obj.rig.getDevice(obj.amp), obj.xaxis, obj.onlineAnalysis,...
+                        obj.preTime, obj.stimTime, 'showF2', true,...
+                        'temporalFrequency', obj.temporalFrequency); 
+            else
+                obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure',...
+                    obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
+            end
             
             if strcmp(obj.searchAxis, 'xaxis')
                 obj.orientation = 0;

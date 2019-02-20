@@ -1,9 +1,9 @@
 classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties       
-        preTime = 500                   % Noise leading duration (ms)
-        stimTime = 500                  % Noise duration (ms)
-        tailTime = 500                  % Noise trailing duration (ms)
+        preTime = 250                   % Pulse leading duration (ms)
+        stimTime = 10                   % Pulse duration (ms)
+        tailTime = 500                  % Pulse trailing duration (ms)
         
         
         sMeanIsom = 1000                % Mean for S-cones (isomerizations)
@@ -113,9 +113,7 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
         end      
                 
         function stim = createLedStimulus(obj, ledMean, ledAmp, ledUnits)
-            if nargin < 4 % Temporary for debugging
-                ledUnits = symphonyui.core.Measurement.NORMALIZED;
-            end
+
             gen = symphonyui.builtin.stimuli.PulseGenerator();
             gen.preTime = obj.preTime;
             gen.stimTime = obj.stimTime;
@@ -144,11 +142,14 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             % Epoch LED stimuli
             epoch.addStimulus(obj.redLed,...
-                obj.createLedStimulus(rguMean(1), rguStdv(1)));
+                obj.createLedStimulus(rguMean(1), rguStdv(1)),...
+                obj.redLed.background.displayUnits);
             epoch.addStimulus(obj.greenLed,...
-                obj.createLedStimulus(rguMean(2), rguStdv(2)));
+                obj.createLedStimulus(rguMean(2), rguStdv(2)),...
+                obj.greenLed.background.displayUnits);
             epoch.addStimulus(obj.uvLed,...
-                obj.createLedStimulus(rguMean(3), rguStdv(3)));
+                obj.createLedStimulus(rguMean(3), rguStdv(3)),... 
+                obj.uvLed.background.displayUnits);
             
             % Epoch responses
             epoch.addResponse(obj.rig.getDevice(obj.amp));
