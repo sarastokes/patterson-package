@@ -16,12 +16,12 @@ classdef ConeIsolatingSwitchingNoise < edu.washington.riekelab.protocols.RiekeLa
         tailTime = 500                  % Noise trailing duration (ms)
         
         sMeanIsom = [1000 2000]         % Mean for S-cones (isomerizations)
-        mMeanIsom = 2000                % Mean for M-cones (isomerizations)
-        lMeanIsom = 2000                % Mean for L-cones (isomerizations)
+        mMeanIsom = [2000 2000]         % Mean for M-cones (isomerizations)
+        lMeanIsom = [2000 2000]         % Mean for L-cones (isomerizations)
         
-        sStdvContrast = 0.3             % S-cone noise SD (contrast [0 1])
-        mStdvContrast = 0               % M-cone noise SD (contrast [0 1])
-        lStdvContrast = 0               % L-cone noise SD (contrast [0 1])
+        sStdvContrast = [0.3 0.3]       % S-cone noise SD (contrast [0 1])
+        mStdvContrast = [0 0]           % M-cone noise SD (contrast [0 1])
+        lStdvContrast = [0 0]           % L-cone noise SD (contrast [0 1])
         
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing

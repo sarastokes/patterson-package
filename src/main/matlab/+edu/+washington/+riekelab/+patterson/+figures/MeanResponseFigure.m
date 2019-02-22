@@ -21,7 +21,7 @@ classdef MeanResponseFigure < symphonyui.core.FigureHandler
             co = get(groot, 'defaultAxesColorOrder');
 
             ip = inputParser();
-            ip.addParameter('groupBy', [], @(x)iscellstr(x));
+            ip.addParameter('groupBy', [], @(x)iscellstr(x)); %#ok
             ip.addParameter('sweepColor', co(1,:), @(x)ischar(x) || ismatrix(x));
             ip.addParameter('storedSweepColor', 'r', @(x)ischar(x) || isvector(x));
             ip.addParameter('recordingType', [], @(x)ischar(x));
@@ -143,7 +143,7 @@ classdef MeanResponseFigure < symphonyui.core.FigureHandler
                     warning('Not enough colors supplied for sweeps')
                 end
                 sweep.line = line(x, y, 'Parent', obj.axesHandle,...
-                    'Color', obj.sweepColor(cInd,:));
+                    'Color', obj.sweepColor(cInd,:), 'LineWidth', 1);
                 sweep.parameters = parameters;
                 sweep.count = 1;
                 obj.sweeps{end + 1} = sweep;

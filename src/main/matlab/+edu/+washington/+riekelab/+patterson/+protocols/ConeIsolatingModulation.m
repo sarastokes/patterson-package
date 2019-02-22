@@ -1,8 +1,8 @@
 classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties       
-        preTime = 250                   % Pulse leading duration (ms)
-        stimTime = 10                   % Pulse duration (ms)
+        preTime = 500                   % Pulse leading duration (ms)
+        stimTime = 1000                 % Pulse duration (ms)
         tailTime = 500                  % Pulse trailing duration (ms)
         temporalFrequency = 2           % Hz
         temporalClass = 'sinewave'      % Temporal modulation type
