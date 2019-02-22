@@ -15,6 +15,7 @@ classdef BarCentering < edu.washington.riekelab.protocols.RiekeLabStageProtocol
         centerOffset = [0,0]            % Center offset in pixels (x,y) 
         onlineAnalysis = 'none'         % Online analysis type.
         numberOfAverages = uint16(13)   % Number of epochs
+        doAnalysis = false
         interpulseInterval = 0          % Duration between spots (s)
     end
 
@@ -58,19 +59,21 @@ classdef BarCentering < edu.washington.riekelab.protocols.RiekeLabStageProtocol
             obj.xaxis = pos';
 
             rgb = edu.washington.riekelab.patterson.utils.multigradient(...
-                'preset', 'div.cb.spectral.9', 'length', numel(obj.contrasts));
+                'preset', 'div.cb.spectral.9', 'length', numel(obj.positions));
             
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure',...
                     obj.rig.getDevice(obj.amp));
                 obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
                     obj.rig.getDevice(obj.amp), 'groupBy', {'position'},...
-                    'recordingType', obj.onlineAnalysis, 'colors', rgb);
-                if ~strcmp(obj.onlineAnalysis, 'none')
+                    'recordingType', obj.onlineAnalysis, 'sweepColor', rgb);
+                if ~strcmp(obj.onlineAnalysis, 'none') && obj.doAnalysis
                     obj.showFigure('edu.washington.riekelab.patterson.figures.F1F2Figure',...
                         obj.rig.getDevice(obj.amp), obj.xaxis, obj.onlineAnalysis,...
                         obj.preTime, obj.stimTime, 'showF2', true,...
-                        'temporalFrequency', obj.temporalFrequency); 
+                        'temporalFrequency', obj.temporalFrequency,...
+                        'xName', 'position'); 
+                end
             else
                 obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure',...
                     obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));

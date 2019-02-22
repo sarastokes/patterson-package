@@ -11,10 +11,12 @@ classdef LedRangeFigure < symphonyui.core.FigureHandler
         redRange
         greenRange
         uvRange
+        outlierCounter
     end
     
     methods
         function obj = LedRangeFigure(device)
+            obj.outlierCounter = [0 0 0];
             obj.createUi();
         end
         
@@ -40,6 +42,8 @@ classdef LedRangeFigure < symphonyui.core.FigureHandler
                 'Style', 'text', 'String', 'Red: ');
             obj.redRange = uicontrol(redLayout,...
                 'Style', 'text', 'String', '');
+            obj.redCounter = ucontrol(redLayout,...
+                'Style', 'text', 'String', '0');
             
             
             greenLayout = uix.HBox('Parent', mainLayout,...
@@ -48,6 +52,8 @@ classdef LedRangeFigure < symphonyui.core.FigureHandler
                 'Style', 'text', 'String', 'Green: ');
             obj.greenRange = uicontrol(greenLayout,...
                 'Style', 'text', 'String', '');
+            obj.greenCounter = uicontrol(greenLayout,...
+                'Style', 'text', 'String', '0');
             
             uvLayout = uix.HBox('Parent', mainLayout,...
                 'BackgroundColor', 'w');
@@ -55,6 +61,8 @@ classdef LedRangeFigure < symphonyui.core.FigureHandler
                 'Style', 'text', 'String', 'UV: ');
             obj.uvRange = uicontrol(uvLayout,...
                 'Style', 'text', 'String', '');
+            obj.uvCounter = uicontrol(uvLayout,...
+                'Style', 'text', 'String', '0');
             
         end
         

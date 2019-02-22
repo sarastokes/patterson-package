@@ -21,7 +21,7 @@ classdef MeanResponseFigure < symphonyui.core.FigureHandler
             co = get(groot, 'defaultAxesColorOrder');
 
             ip = inputParser();
-            ip.addParameter('groupBy', [], @(x)iscellstr(x)); %#ok
+            ip.addParameter('groupBy', [], @(x)iscellstr(x));
             ip.addParameter('sweepColor', co(1,:), @(x)ischar(x) || ismatrix(x));
             ip.addParameter('storedSweepColor', 'r', @(x)ischar(x) || isvector(x));
             ip.addParameter('recordingType', [], @(x)ischar(x));

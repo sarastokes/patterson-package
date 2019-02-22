@@ -68,6 +68,7 @@ classdef F1F2Figure < symphonyui.core.FigureHandler
             obj.F1 = zeros(size(obj.xvals));
             obj.F2 = zeros(size(obj.xvals));
             obj.P1 = zeros(size(obj.xvals));
+            obj.repsPerX = zeros(size(obj.xvals));
             
             obj.epochNum = 0;
             
@@ -144,15 +145,15 @@ classdef F1F2Figure < symphonyui.core.FigureHandler
             else
                 xval = epoch.parameters(obj.xName);
             end
-            xIndex = obj.xval == xval;
+            xIndex = obj.xvals == xval;
             
             if numel(quantities) > 0
                 y = quantities;
-                if strcmp(obj.onlineAnalysis, 'spikes')
+                if strcmp(obj.onlineAnalysis, 'extracellular')
                     res = edu.washington.riekelab.patterson.utils.spikeDetectorOnline(y, [], sampleRate);
                     y = zeros(size(y));
                     y(res.sp) = 1;
-                    y = edu.washington.riekelab.patterson.utils.BinSpikeRate(...
+                    y = edu.washington.riekelab.patterson.utils.binSpikeRate(...
                         y(prePts+1:end), obj.BINRATE, sampleRate);
                 else
                     if prePts > 0
@@ -187,19 +188,19 @@ classdef F1F2Figure < symphonyui.core.FigureHandler
             
             cla(obj.axesHandle(1)); cla(obj.axesHandle(2));
             
-            line(obj.xval, obj.F1,...
+            line(obj.xvals, obj.F1,...
                 'Parent', obj.axesHandle(1),...
                 'Marker', 'o', 'Color', 'k');
             if obj.showF2
-                line(obj.xval, obj.F2,...
+                line(obj.xvals, obj.F2,...
                     'Parent', obj.axesHandle(1),...
                     'Marker', 'o', 'Color', [0.5, 0.5, 0.5]);
             end
-            line(obj.xval, obj.P1,...
+            line(obj.xvals, obj.P1,...
                 'Parent', obj.axesHandle(2),...
                 'Color', 'k', 'Marker', 'o');
             
-            xlim(obj.axesHandle(:), [min(obj.xval), max(obj.xval)]);            
+            %xlim(obj.axesHandle(:), [min(obj.xvals), max(obj.xvals)]);            
         end
     end
     

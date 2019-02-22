@@ -350,6 +350,8 @@ classdef ConeIsolatingSwitchingNoise < edu.washington.riekelab.protocols.RiekeLa
         end
         
         function updateAnalysisFigure(obj, ~, epoch)
+            assignin('base', 'epoch2', epoch);
+            assignin('base', 'obj2', obj);
             ind = epoch.parameters('stimGroup');
             
             prePts = obj.preTime * obj.sampleRate/1e3;
