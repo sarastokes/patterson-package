@@ -11,12 +11,14 @@ classdef LedRangeFigure < symphonyui.core.FigureHandler
         redRange
         greenRange
         uvRange
-        outlierCounter
+        
+        redCounter
+        greenCounter
+        uvCounter
     end
     
     methods
         function obj = LedRangeFigure(device)
-            obj.outlierCounter = [0 0 0];
             obj.createUi();
         end
         
@@ -25,7 +27,7 @@ classdef LedRangeFigure < symphonyui.core.FigureHandler
             
             set(obj.figureHandle,...
                 'Name', 'Response Figure',...
-                'Position', screenCenter(150, 200),...
+                'Position', screenCenter(150, 150),...
                 'Toolbar', 'none',...
                 'Color', 'w');
             
@@ -42,18 +44,13 @@ classdef LedRangeFigure < symphonyui.core.FigureHandler
                 'Style', 'text', 'String', 'Red: ');
             obj.redRange = uicontrol(redLayout,...
                 'Style', 'text', 'String', '');
-            obj.redCounter = ucontrol(redLayout,...
-                'Style', 'text', 'String', '0');
-            
-            
+                      
             greenLayout = uix.HBox('Parent', mainLayout,...
                 'BackgroundColor', 'w');
             uicontrol(greenLayout,...
                 'Style', 'text', 'String', 'Green: ');
             obj.greenRange = uicontrol(greenLayout,...
                 'Style', 'text', 'String', '');
-            obj.greenCounter = uicontrol(greenLayout,...
-                'Style', 'text', 'String', '0');
             
             uvLayout = uix.HBox('Parent', mainLayout,...
                 'BackgroundColor', 'w');
@@ -61,9 +58,9 @@ classdef LedRangeFigure < symphonyui.core.FigureHandler
                 'Style', 'text', 'String', 'UV: ');
             obj.uvRange = uicontrol(uvLayout,...
                 'Style', 'text', 'String', '');
-            obj.uvCounter = uicontrol(uvLayout,...
-                'Style', 'text', 'String', '0');
-            
+
+            set(findall(obj.figureHandle, 'Type', 'uicontrol'),...
+                'BackgroundColor', 'w');
         end
         
         function handleEpoch(obj, epoch)
@@ -73,6 +70,18 @@ classdef LedRangeFigure < symphonyui.core.FigureHandler
                 sprintf('%.2f%%', epoch.parameters('greenOutliers')));
             set(obj.uvRange, 'String',...
                 sprintf('%.2f%%', epoch.parameters('uvOutliers')));
+            
+            % Use red text as a warning of LED range outliers
+            if epoch.parameters('redOutliers') > 0
+                set(obj.redRange, 'ForegroundColor', 'r');
+            end
+            if epoch.parameters('greenOutliers') > 0
+                set(obj.greenRange, 'ForegroundColor', 'r');
+            end
+            if epoch.parameters('uvOutliers') > 0
+                set(obj.uvRange, 'ForegroundColor', 'r');
+            end
+
         end
     end
 end
