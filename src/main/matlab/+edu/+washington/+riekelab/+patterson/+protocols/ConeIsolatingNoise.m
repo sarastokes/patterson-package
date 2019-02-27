@@ -5,17 +5,19 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
     %   Presents Gaussian noise stimuli with control over L, M and S-cone
     %   isomerizations for both the mean and sd.
     %
-    % 19Feb2019 - SSP
+    % History:
+    %   19Feb2019 - SSP
+    %   26Feb2019 - SSP - New online analysis
     % ---------------------------------------------------------------------
     
     properties
-        preTime = 100                   % Noise leading duration (ms)
-        stimTime = 600                  % Noise duration (ms)
-        tailTime = 100                  % Noise trailing duration (ms)
+        preTime = 250                   % Noise leading duration (ms)
+        stimTime = 10000                % Noise duration (ms)
+        tailTime = 250                  % Noise trailing duration (ms)
         
-        sMeanIsom = 2000                % Mean for S-cones (isomerizations)
-        mMeanIsom = 2000                % Mean for M-cones (isomerizations)
-        lMeanIsom = 2000                % Mean for L-cones (isomerizations)
+        sMeanIsom = 4000                % Mean for S-cones (isomerizations)
+        mMeanIsom = 4000                % Mean for M-cones (isomerizations)
+        lMeanIsom = 4000                % Mean for L-cones (isomerizations)
         
         sStdvContrast = 0.3             % S-cone noise SD (contrast [-1, 1])
         mStdvContrast = 0               % M-cone noise SD (contrast [-1, 1])
@@ -46,9 +48,6 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         amp2
     end
     
-    properties
-    end
-    
     properties (Hidden, Dependent)
         rguToLms
         lmsToRgu
@@ -68,48 +67,22 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         analysisFigure
         analysisFigureAxes
-        analysisFigureData
-        analysisFigureLines
+        allResponses
+        allStimuli
+        
+        epochNum            % Only necessary for debugging online analysis
     end
     
     properties (Constant, Hidden)
-        % TODO: Get real values for Confocal rig
-        LED_MAX = 9; %10.239;
-        LED_MIN = -9; %-10.24;
+        LED_MAX = 9;        % V
+        LED_MIN = -9;       % V
+        
+        DEBUG = false;
+        BIN_RATE = 480;     % Hz
+        FILTER_LEN = 500;   % ms
+        ADAPT_TIME = 250;   % ms
         
         LED_COLORS = [0.25, 0.25, 1; 0, 0.8, 0.3; 0.2, 0.3, 0.9];
-    end
-    
-    methods
-        function value = get.rguToLms(obj)
-            value = [obj.redLedIsomPerVoltL, obj.greenLedIsomPerVoltL, obj.uvLedIsomPerVoltL; ...
-                obj.redLedIsomPerVoltM, obj.greenLedIsomPerVoltM, obj.uvLedIsomPerVoltM; ...
-                obj.redLedIsomPerVoltS, obj.greenLedIsomPerVoltS, obj.uvLedIsomPerVoltS];
-        end
-        
-        function value = get.lmsToRgu(obj)
-            value = inv(obj.rguToLms);
-        end
-        
-        function value = get.lmsMeanIsomerizations(obj)
-            value = [obj.lMeanIsom; obj.mMeanIsom; obj.sMeanIsom];
-        end
-        
-        function value = get.lmsStdvIsomerizations(obj)
-            value = obj.lmsMeanIsomerizations .* [obj.lStdvContrast, obj.mStdvContrast, obj.sStdvContrast]';
-        end
-        
-        function value = get.redLed(obj)
-            value = obj.rig.getDevice('Red LED');
-        end
-        
-        function value = get.greenLed(obj)
-            value = obj.rig.getDevice('Green LED');
-        end
-        
-        function value = get.uvLed(obj)
-            value = obj.rig.getDevice('UV LED');
-        end
     end
     
     methods
@@ -146,6 +119,8 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
+            
+            obj.epochNum = 0;
             
             % Setup the analysis figures
             obj.showFigure('edu.washington.riekelab.patterson.figures.LedRangeFigure',...
@@ -270,6 +245,39 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         function tf = shouldContinueRun(obj)
             tf = obj.numEpochsCompleted < obj.numberOfAverages;
         end
+    end
+    
+    % Dependent set/get methods
+    methods
+        function value = get.rguToLms(obj)
+            value = [obj.redLedIsomPerVoltL, obj.greenLedIsomPerVoltL, obj.uvLedIsomPerVoltL; ...
+                obj.redLedIsomPerVoltM, obj.greenLedIsomPerVoltM, obj.uvLedIsomPerVoltM; ...
+                obj.redLedIsomPerVoltS, obj.greenLedIsomPerVoltS, obj.uvLedIsomPerVoltS];
+        end
+        
+        function value = get.lmsToRgu(obj)
+            value = inv(obj.rguToLms);
+        end
+        
+        function value = get.lmsMeanIsomerizations(obj)
+            value = [obj.lMeanIsom; obj.mMeanIsom; obj.sMeanIsom];
+        end
+        
+        function value = get.lmsStdvIsomerizations(obj)
+            value = obj.lmsMeanIsomerizations .* [obj.lStdvContrast, obj.mStdvContrast, obj.sStdvContrast]';
+        end
+        
+        function value = get.redLed(obj)
+            value = obj.rig.getDevice('Red LED');
+        end
+        
+        function value = get.greenLed(obj)
+            value = obj.rig.getDevice('Green LED');
+        end
+        
+        function value = get.uvLed(obj)
+            value = obj.rig.getDevice('UV LED');
+        end
         
         function a = get.amp2(obj)
             amps = obj.rig.getDeviceNames('Amp');
@@ -301,27 +309,35 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             obj.analysisFigureAxes.NextPlot = 'add';
             obj.analysisFigureAxes.XLabel.String = 'time (ms)';
             obj.analysisFigureAxes.YLabel.String = 'norm. filter ampl.';
-            obj.analysisFigureAxes.Title.String = 'fast linear filters';
-            obj.analysisFigureAxes.XLim = [0 200];
+            obj.analysisFigureAxes.Title.String = 'linear filter';
+            obj.analysisFigureAxes.XLim = [0, obj.FILTER_LEN];
             
-            % Keys (also legend entries) for each background/stimulus pair
-            responsePoints = obj.stimTime * obj.sampleRate / 1e3;
-            
-            obj.analysisFigureData = edu.washington.riekelab.patterson.utils.OnlineLinearFilter(...
-                responsePoints, obj.sampleRate, obj.frequencyCutoff / 2);
-            obj.analysisFigureLines = plot(obj.analysisFigureAxes,...
-                (1:responsePoints) * 1e3 / obj.sampleRate, zeros(1, responsePoints));
+            obj.allStimuli = []; obj.allResponses = [];
         end
         
         function updateAnalysisFigure(obj, ~, epoch)
-            prePts = obj.preTime * obj.sampleRate/1e3;
-            stimPts = obj.stimTime * obj.sampleRate/1e3;
             
-            % Get and trim response
-            response = epoch.getResponse(obj.rig.getDevice(obj.amp)).getData();
-            response = response(prePts + 1:prePts + stimPts);
+            obj.epochNum = obj.epochNum + 1;
+            if obj.DEBUG
+                S = load('LedNoiseData.mat');
+                S = S.LedNoiseData;
+                prePts = S.params.preTime * S.params.sampleRate/1e3;
+                stimPts = S.params.stimTime * S.params.sampleRate/1e3;
+                adaptPts = obj.ADAPT_TIME * S.params.sampleRate/1e3;
+                
+                response = S.resp(obj.epochNum, :);
+            else
+                % Protocol parameters
+                prePts = obj.preTime * obj.sampleRate/1e3;
+                stimPts = obj.stimTime * obj.sampleRate/1e3;
+                adaptPts = obj.ADAPT_TIME * obj.sampleRate/1e3;
             
-            % If necessary, detect spikes
+                % Get and trim response
+                response = epoch.getResponse(obj.rig.getDevice(obj.amp)).getData();
+            end
+                
+            response = response(prePts + adaptPts + 1:prePts + stimPts);
+            
             if strcmp(obj.onlineAnalysis, 'extracellular')
                 spikeDetectionResults = edu.washington.riekelab.patterson.utils.spikeDetectorOnline(response);
                 response = zeros(size(response));
@@ -329,18 +345,52 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
             
             % Get and trim stimulus
-            stimulus = epoch.getStimulus(obj.greenLed).getData();
-            stimulus = stimulus(prePts + 1:prePts + stimPts);
+            if obj.DEBUG
+                stimulus = S.stim(obj.epochNum, :);
+            else
+                stimulus = epoch.getStimulus(obj.greenLed).getData();
+            end
+            stimulus = stimulus(prePts + adaptPts + 1:prePts + stimPts);
             
-            newLinearFilter = obj.analysisFigureData.AddEpochDataAndComputeCurrentLinearFilter(...
-                stimulus, response);
+            obj.allResponses = cat(1, obj.allResponses,...
+                edu.washington.riekelab.patterson.utils.binSpikeRate(...
+                    response, obj.BIN_RATE, obj.sampleRate)');
+            obj.allStimuli = cat(1, obj.allStimuli,...
+                edu.washington.riekelab.patterson.utils.binData(...
+                    stimulus, obj.BIN_RATE, obj.sampleRate));
             
-            % Normalize the new linear filter
-            newLinearFilter = newLinearFilter / max(abs(newLinearFilter));
-            newLinearFilter = newLinearFilter * (2 * (max(newLinearFilter) > abs(min(newLinearFilter))) - 1);
+            % Calculate linear filter
+            linearFilter = edu.washington.riekelab.patterson.utils.getLinearFilterOnline(...
+                obj.allStimuli, obj.allResponses, obj.BIN_RATE, obj.frequencyCutoff);
+            linearFilter = linearFilter / max(abs(linearFilter));
             
-            % Update plot line
-            obj.analysisFigureLines.YData = newLinearFilter;
+            filterPts = (obj.FILTER_LEN/1000)*obj.BIN_RATE;
+            filterTimes = linspace(0, obj.FILTER_LEN, filterPts);
+            
+            h = findobj(obj.analysisFigureAxes, 'Tag', 'LinearFilter');
+            if isempty(h)
+                line(filterTimes, linearFilter(1:filterPts),...
+                    'Parent', obj.analysisFigureAxes,...
+                    'Color', [0 0 0], 'LineWidth', 1.25,...
+                    'Tag', 'LinearFilter');
+            else
+                set(h, 'YData', linearFilter(1:filterPts));
+            end
+            
+            % Calculate nonlinearity
+            measuredResponse = reshape(obj.allResponses', 1, numel(obj.allResponses));
+            stimulusArray = reshape(obj.allStimuli', 1, numel(obj.allStimuli));
+            
+            linearPrediction = conv(stimulusArray, linearFilter);
+            linearPrediction = linearPrediction(1:length(stimulusArray));
+            [~, edges, bins] = histcounts(linearPrediction, 'BinMethod', 'auto');
+            binCenters = edges(1:end-1) + diff(edges);
+            
+            binnedResponse = zeros(size(binCenters));
+            
+            for i = 1:length(binCenters)
+                binnedResponse(i) = mean(measuredResponse(bins == i));
+            end
         end
     end
     
