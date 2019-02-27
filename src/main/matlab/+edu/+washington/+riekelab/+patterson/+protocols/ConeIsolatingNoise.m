@@ -19,9 +19,9 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         mMeanIsom = 4000                % Mean for M-cones (isomerizations)
         lMeanIsom = 4000                % Mean for L-cones (isomerizations)
         
-        sStdvContrast = 0.3             % S-cone noise SD (contrast [-1, 1])
-        mStdvContrast = 0               % M-cone noise SD (contrast [-1, 1])
-        lStdvContrast = 0               % L-cone noise SD (contrast [-1, 1])
+        sStdvContrast = 0.3             % S-cone noise SD (contrast [0, 1])
+        mStdvContrast = 0               % M-cone noise SD (contrast [0, 1])
+        lStdvContrast = 0               % L-cone noise SD (contrast [0, 1])
         
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
@@ -38,7 +38,7 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         uvLedIsomPerVoltM = 360         % M-cone isom per UV LED volt
         uvLedIsomPerVoltL = 344         % L-cone isom per UV LED volt
         
-        numberOfAverages = uint16(10);  % Number of epochs to deliver
+        numberOfAverages = uint16(15);  % Number of epochs to deliver
         interpulseInterval = 0;         % Duration between noise stimuli (s)
         
         amp                             % Input amplifier
@@ -63,25 +63,12 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
     properties (Hidden)
         ampType
         onlineAnalysisType = symphonyui.core.PropertyType('char', 'row',...
-            {'none', 'extracellular', 'exc', 'inh'})
-        
-        analysisFigure
-        analysisFigureAxes
-        allResponses
-        allStimuli
-        
-        epochNum            % Only necessary for debugging online analysis
+            {'none', 'extracellular', 'voltage_clamp', 'current_clamp', 'subthreshold'})
     end
     
     properties (Constant, Hidden)
         LED_MAX = 9;        % V
-        LED_MIN = -9;       % V
-        
-        DEBUG = false;
-        BIN_RATE = 480;     % Hz
-        FILTER_LEN = 500;   % ms
-        ADAPT_TIME = 250;   % ms
-        
+        LED_MIN = -9;       % V    
         LED_COLORS = [0.25, 0.25, 1; 0, 0.8, 0.3; 0.2, 0.3, 0.9];
     end
     
@@ -120,8 +107,6 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
-            obj.epochNum = 0;
-            
             % Setup the analysis figures
             obj.showFigure('edu.washington.riekelab.patterson.figures.LedRangeFigure',...
                 obj.rig.getDevice(obj.amp));
@@ -130,9 +115,10 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
                     obj.rig.getDevice(obj.amp),...
                     [obj.redLed, obj.greenLed, obj.uvLed]);
                 if ~strcmp(obj.onlineAnalysis, 'none')
-                    obj.analysisFigure = obj.showFigure('symphonyui.builtin.figures.CustomFigure',...
-                        @obj.updateAnalysisFigure);
-                    obj.createAnalysisFigure();
+                    obj.showFigure('edu.washington.riekelab.patterson.figures.LedNoiseFigure',...
+                        obj.rig.getDevice(obj.amp), obj.greenLed, obj.stimTime,...
+                        'preTime', obj.preTime, 'recordingType', obj.onlineAnalysis,...
+                        'frequencyCutoff', obj.frequencyCutoff);
                 end
                 if strcmp(obj.onlineAnalysis, 'extracellular')
                     obj.showFigure('edu.washington.riekelab.patterson.figures.SpikeStatisticsFigure',...
@@ -177,6 +163,24 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.lowerLimit = obj.LED_MIN;
             
             stim = gen.generate();
+        end
+        
+        function y = checkRange(obj, stim)
+            stimData = stim.getData();
+            y = 100 * (sum(stimData <= 0) + sum(stimData == obj.LED_MAX)) ...
+                / (obj.sampleRate * obj.stimTime / 1e3);
+        end
+        
+        function rgb = getStimColor(obj)
+            coneSD = [obj.lStdvContrast, obj.mStdvContrast, obj.sStdvContrast];
+            switch nnz(coneSD)
+                case 1
+                    rgb = obj.LED_COLORS(coneSD > 0, :);
+                case 2
+                    rgb = [1, 0.5, 0];
+                otherwise
+                    rgb = [0, 0, 0];
+            end
         end
         
         function prepareEpoch(obj, epoch)
@@ -230,12 +234,12 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareInterval(obj, interval)
             prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
             
-            interval.addDirectCurrentStimulus(...
-                obj.redLed, obj.redLed.background, obj.interpulseInterval, obj.sampleRate);
-            interval.addDirectCurrentStimulus(...
-                obj.greenLed, obj.greenLed.background, obj.interpulseInterval, obj.sampleRate);
-            interval.addDirectCurrentStimulus(...
-                obj.uvLed, obj.uvLed.background, obj.interpulseInterval, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.redLed,...
+                obj.redLed.background, obj.interpulseInterval, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.greenLed,...
+                obj.greenLed.background, obj.interpulseInterval, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.uvLed,...
+                obj.uvLed.background, obj.interpulseInterval, obj.sampleRate);
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
@@ -289,109 +293,4 @@ classdef ConeIsolatingNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
         end
     end
-    
-    % Online analysis methods
-    methods
-        
-        function y = checkRange(obj, stim)
-            stimData = stim.getData();
-            y = 100 * (sum(stimData <= 0) + sum(stimData == obj.LED_MAX)) ...
-                / (obj.sampleRate * obj.stimTime / 1e3);
-        end
-        
-        function createAnalysisFigure(obj)
-            if ~isempty(obj.analysisFigureAxes) && isvalid(obj.analysisFigureAxes)
-                cla(obj.analysisFigureAxes);
-            else
-                obj.analysisFigureAxes = axes('Parent', obj.analysisFigure.getFigureHandle);
-            end
-            
-            obj.analysisFigureAxes.NextPlot = 'add';
-            obj.analysisFigureAxes.XLabel.String = 'time (ms)';
-            obj.analysisFigureAxes.YLabel.String = 'norm. filter ampl.';
-            obj.analysisFigureAxes.Title.String = 'linear filter';
-            obj.analysisFigureAxes.XLim = [0, obj.FILTER_LEN];
-            
-            obj.allStimuli = []; obj.allResponses = [];
-        end
-        
-        function updateAnalysisFigure(obj, ~, epoch)
-            
-            obj.epochNum = obj.epochNum + 1;
-            if obj.DEBUG
-                S = load('LedNoiseData.mat');
-                S = S.LedNoiseData;
-                prePts = S.params.preTime * S.params.sampleRate/1e3;
-                stimPts = S.params.stimTime * S.params.sampleRate/1e3;
-                adaptPts = obj.ADAPT_TIME * S.params.sampleRate/1e3;
-                
-                response = S.resp(obj.epochNum, :);
-            else
-                % Protocol parameters
-                prePts = obj.preTime * obj.sampleRate/1e3;
-                stimPts = obj.stimTime * obj.sampleRate/1e3;
-                adaptPts = obj.ADAPT_TIME * obj.sampleRate/1e3;
-            
-                % Get and trim response
-                response = epoch.getResponse(obj.rig.getDevice(obj.amp)).getData();
-            end
-                
-            response = response(prePts + adaptPts + 1:prePts + stimPts);
-            
-            if strcmp(obj.onlineAnalysis, 'extracellular')
-                spikeDetectionResults = edu.washington.riekelab.patterson.utils.spikeDetectorOnline(response);
-                response = zeros(size(response));
-                response(spikeDetectionResults.sp) = 1;
-            end
-            
-            % Get and trim stimulus
-            if obj.DEBUG
-                stimulus = S.stim(obj.epochNum, :);
-            else
-                stimulus = epoch.getStimulus(obj.greenLed).getData();
-            end
-            stimulus = stimulus(prePts + adaptPts + 1:prePts + stimPts);
-            
-            obj.allResponses = cat(1, obj.allResponses,...
-                edu.washington.riekelab.patterson.utils.binSpikeRate(...
-                    response, obj.BIN_RATE, obj.sampleRate)');
-            obj.allStimuli = cat(1, obj.allStimuli,...
-                edu.washington.riekelab.patterson.utils.binData(...
-                    stimulus, obj.BIN_RATE, obj.sampleRate));
-            
-            % Calculate linear filter
-            linearFilter = edu.washington.riekelab.patterson.utils.getLinearFilterOnline(...
-                obj.allStimuli, obj.allResponses, obj.BIN_RATE, obj.frequencyCutoff);
-            linearFilter = linearFilter / max(abs(linearFilter));
-            
-            filterPts = (obj.FILTER_LEN/1000)*obj.BIN_RATE;
-            filterTimes = linspace(0, obj.FILTER_LEN, filterPts);
-            
-            h = findobj(obj.analysisFigureAxes, 'Tag', 'LinearFilter');
-            if isempty(h)
-                line(filterTimes, linearFilter(1:filterPts),...
-                    'Parent', obj.analysisFigureAxes,...
-                    'Color', [0 0 0], 'LineWidth', 1.25,...
-                    'Tag', 'LinearFilter');
-            else
-                set(h, 'YData', linearFilter(1:filterPts));
-            end
-            
-            % Calculate nonlinearity
-            measuredResponse = reshape(obj.allResponses', 1, numel(obj.allResponses));
-            stimulusArray = reshape(obj.allStimuli', 1, numel(obj.allStimuli));
-            
-            linearPrediction = conv(stimulusArray, linearFilter);
-            linearPrediction = linearPrediction(1:length(stimulusArray));
-            [~, edges, bins] = histcounts(linearPrediction, 'BinMethod', 'auto');
-            binCenters = edges(1:end-1) + diff(edges);
-            
-            binnedResponse = zeros(size(binCenters));
-            
-            for i = 1:length(binCenters)
-                binnedResponse(i) = mean(measuredResponse(bins == i));
-            end
-        end
-    end
-    
 end

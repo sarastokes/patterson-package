@@ -79,7 +79,7 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
                 'TooltipString', 'Capture Figure',...
                 'ClickedCallback', @obj.onSelectedCaptureFigure);
             iconDir = [fileparts(fileparts(mfilename('fullpath'))), '\+icons\'];
-            setIconImage(captureFigureButton, [iconDir, 'save_image.gif']);
+            setIconImage(captureFigureButton, [iconDir, 'picture.gif']);
             
             % ---------------------------------------------------- axes ---
             obj.respAxes = subplot(4,1,1:3,...
@@ -143,6 +143,7 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
             end
             ylabel(obj.respAxes, units,...
                 'Interpreter', 'none');
+            xlim(obj.respAxes, [0, max(x)]);
 
             % Parse and plot stimuli
             for i = 1:numel(obj.leds)

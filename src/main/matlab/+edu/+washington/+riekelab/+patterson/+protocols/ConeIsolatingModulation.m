@@ -1,5 +1,13 @@
 classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
-    
+% CONEISOLATINGMODULATION
+%
+% Description:
+%   Presents a cone-isolating sine or squarewave
+%
+% History:
+%   21Feb2019 - SSP
+% -------------------------------------------------------------------------
+
     properties       
         preTime = 500                   % Pulse leading duration (ms)
         stimTime = 1000                 % Pulse duration (ms)
@@ -7,13 +15,13 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
         temporalFrequency = 2           % Hz
         temporalClass = 'sinewave'      % Temporal modulation type
         
-        sMeanIsom = 1000                % Mean for S-cones (isomerizations)
-        mMeanIsom = 1000                % Mean for M-cones (isomerizations)
-        lMeanIsom = 1000                % Mean for L-cones (isomerizations)
+        sMeanIsom = 4000                % Mean for S-cones (isomerizations)
+        mMeanIsom = 4000                % Mean for M-cones (isomerizations)
+        lMeanIsom = 4000                % Mean for L-cones (isomerizations)
         
         lContrast = 0                   % L-cone contrast ([-1, 1])
         mContrast = 0                   % M-cone contrast ([-1, 1])
-        sContrast = 0.5                 % S-cone contrast ([-1, 1])
+        sContrast = 0.3                 % S-cone contrast ([-1, 1])
         
         numberOfAverages = uint16(3)    % Number of epochs
         onlineAnalysis = 'none'         % Online analysis type
@@ -39,7 +47,7 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
     properties (Hidden)
         ampType
         onlineAnalysisType = symphonyui.core.PropertyType('char', 'row',...
-            {'none', 'extracellular', 'exc', 'inh'})
+            {'none', 'extracellular', 'voltage_clamp', 'current_clamp', 'subthreshold'})
         temporalClassType = symphonyui.core.PropertyType('char', 'row',...
             {'sinewave', 'squarewave'})
     end
