@@ -11,17 +11,17 @@ classdef ConeIsolatingSwitchingNoise < edu.washington.riekelab.protocols.RiekeLa
     % ---------------------------------------------------------------------
     
     properties
-        preTime = 500                   % Noise leading duration (ms)
+        preTime = 0                     % Noise leading duration (ms)
         stimTime = 10000                % Noise duration (ms)
-        tailTime = 500                  % Noise trailing duration (ms)
+        tailTime = 0                    % Noise trailing duration (ms)
         
-        sMeanIsom = [1000 2000]         % Mean for S-cones (isomerizations)
-        mMeanIsom = [2000 2000]         % Mean for M-cones (isomerizations)
-        lMeanIsom = [2000 2000]         % Mean for L-cones (isomerizations)
+        sMeanIsom = [4000 4000]         % Mean for S-cones (isomerizations)
+        mMeanIsom = [4000 4000]         % Mean for M-cones (isomerizations)
+        lMeanIsom = [4000 4000]         % Mean for L-cones (isomerizations)
         
-        sStdvContrast = [0.3 0.3]       % S-cone noise SD (contrast [0 1])
-        mStdvContrast = [0 0]           % M-cone noise SD (contrast [0 1])
-        lStdvContrast = [0 0]           % L-cone noise SD (contrast [0 1])
+        sStdvContrast = [0 0.3]         % S-cone noise SD (contrast [0 1])
+        mStdvContrast = [0.3 0]         % M-cone noise SD (contrast [0 1])
+        lStdvContrast = [0.3 0]         % L-cone noise SD (contrast [0 1])
         
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
@@ -64,20 +64,14 @@ classdef ConeIsolatingSwitchingNoise < edu.washington.riekelab.protocols.RiekeLa
     properties (Hidden)
         ampType
         onlineAnalysisType = symphonyui.core.PropertyType('char', 'row',...
-            {'none', 'extracellular', 'exc', 'inh'})
+            {'none', 'extracellular', 'voltage_clamp', 'current_clamp', 'subthreshold'})
         
         firstGroup  % Tracks whether or not epoch is first group
-        
-        analysisFigure
-        analysisFigureAxes
-        analysisFigureData
-        analysisFigureLines
     end
     
     properties (Constant, Hidden)
-        % TODO: Get real values for Confocal rig
-        LED_MAX = 9; %10.239;
-        LED_MIN = -9; %-10.24;
+        LED_MAX = 9; 
+        LED_MIN = -9;
         
         LED_COLORS = [0.25, 0.25, 1; 0, 0.8, 0.3; 0.2, 0.3, 0.9];
     end
@@ -172,17 +166,16 @@ classdef ConeIsolatingSwitchingNoise < edu.washington.riekelab.protocols.RiekeLa
                 obj.showFigure('edu.washington.riekelab.patterson.figures.LedResponseFigure',...
                     obj.rig.getDevice(obj.amp),...
                     [obj.redLed, obj.greenLed, obj.uvLed]);
-                % obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
-                %     obj.rig.getDevice(obj.amp), 'groupBy', {'stimGroup'},...
-                %    'recordingType', obj.onlineAnalysis);
                 rgb = repmat(obj.LED_COLORS(2:3, :), [ceil(double(obj.numberOfAverages)), 1]);
                 obj.showFigure('edu.washington.riekelab.patterson.figures.TotalResponseFigure',...
                     obj.rig.getDevice(obj.amp), 'colorBy', {'stimGroup'},...
                     'recordingType', obj.onlineAnalysis, 'sweepColor', rgb);
                 if ~strcmp(obj.onlineAnalysis, 'none')
-                    obj.analysisFigure = obj.showFigure('symphonyui.builtin.figures.CustomFigure',...
-                        @obj.updateAnalysisFigure);
-                    obj.createAnalysisFigure();
+                    obj.showFigure('edu.washington.riekelab.patterson.figures.SwitchingNoiseFigure',...
+                        obj.rig.getDevice(obj.amp), obj.greenLed, obj.stimTime, 'stimGroup',...
+                        'preTime', obj.preTime, 'recordingType', obj.onlineAnalysis,...
+                        'frequencyCutoff', obj.frequencyCutoff,...
+                        'filterColor', obj.LED_COLORS(2:3, :));
                 end
                 if strcmp(obj.onlineAnalysis, 'extracellular')
                     obj.showFigure('edu.washington.riekelab.patterson.figures.SpikeStatisticsFigure',...

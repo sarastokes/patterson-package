@@ -1,19 +1,18 @@
-classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
+classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties       
-        preTime = 250                   % Pulse leading duration (ms)
-        stimTime = 250                   % Pulse duration (ms)
-        tailTime = 250                  % Pulse trailing duration (ms)
+        preTime = 500                   % Pulse leading duration (ms)
+        stimTime = 500                  % Pulse duration (ms)
+        tailTime = 1500                 % Pulse trailing duration (ms)
         
-        sMeanIsom = 4000                % Mean for S-cones (isomerizations)
-        mMeanIsom = 4000                % Mean for M-cones (isomerizations)
-        lMeanIsom = 4000                % Mean for L-cones (isomerizations)
-        
-        lContrast = 0                   % L-cone contrast ([-1, 1])
-        mContrast = 0                   % M-cone contrast ([-1, 1])
+        meanIsom = 4000                 % Background isomerizaions
+        lmContrast = 0.5                % LM-cone contrast ([-1, 1])
         sContrast = 0.5                 % S-cone contrast ([-1, 1])
         
-        numberOfAverages = uint16(3)    % Number of epochs
+        ECl = -55                       % Apparent chloride reversal (mV)
+        voltageHolds = [-20 0 20 35 50 65 90 115 0] % Change in Vhold re to ECl (mV)
+        
+        numberOfAverages = uint16(27)   % Number of epochs
         onlineAnalysis = 'none'         % Online analysis type
               
         redLedIsomPerVoltS = 38         % S-cone isom per red LED volt    
@@ -38,6 +37,11 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
         ampType
         onlineAnalysisType = symphonyui.core.PropertyType('char', 'row',...
             {'none', 'extracellular', 'voltage_clamp', 'current_clamp', 'subthreshold'})
+        
+        holdingPotential
+        nextHold
+        Vh 
+        lmsContrasts
     end
     
     properties (Hidden, Dependent)
@@ -46,10 +50,14 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
         uvLed
         
         lmsMeanIsom
-        lmsStdvIsom
         
         lmsToRgu
         rguToLms
+    end
+
+    properties
+        LED_MAX = 9;
+        REPS_PER_HOLD = 3;
     end
     
     methods
@@ -87,6 +95,14 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
+            obj.Vh = ones(obj.REPS_PER_HOLD, 1)*obj.voltageHolds + obj.ECl;
+            obj.Vh = obj.Vh(:)';
+            
+            lmsContrast = obj.lmsMeanIsom .* [obj.lContrast, obj.mContrast, 0]';
+            lmsContrast = cat(1, lmsContrast,... 
+                obj.lmsMeanIsom .* [0, 0, obj.sContrast]');
+            obj.lmsContrasts = repmat(lmsContrast, [numel(obj.voltageHolds), 1]);
+
             % Setup the analysis figures
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('edu.washington.riekelab.patterson.figures.LedResponseFigure',...
@@ -95,6 +111,10 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
                 obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
                     obj.rig.getDevice(obj.amp), 'groupBy', {},...
                     'recordingType', obj.onlineAnalysis);
+                if ~strcmp(obj.onlineAnalysis, 'none')
+                    obj.showFigure('edu.washington.riekelab.patterson.figures.VJumpFigure',...
+                        obj.rig.getDevice(obj.amp), obj.ECl, obj.Vh);
+                end
             else
                 obj.showFigure('symphonyui.builtin.figures.DualResponseFigure',...
                     obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
@@ -109,6 +129,7 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
                 rguMean(2), obj.greenLed.background.displayUnits);
             obj.uvLed.background = symphonyui.core.Measurement(...
                 rguMean(3), obj.uvLed.background.displayUnits);
+            
         end      
                 
         function stim = createLedStimulus(obj, ledMean, ledAmp, ledUnits)
@@ -127,9 +148,37 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
+
+            
+            % Get the current contrast.
+            if length(obj.contrasts) > 1
+                obj.contrast = obj.allContrasts(mod(obj.numEpochsCompleted,length(obj.allContrasts))+1);
+            else
+                obj.contrast = obj.contrasts;
+            end
+            epoch.addParameter('contrast', obj.contrast);
+
+            % Get the current holding potential.
+            obj.holdingPotential = obj.Vh(mod(obj.numEpochsCompleted,length(obj.Vh))+1);
+            if (obj.numEpochsCompleted+1) < obj.numberOfAverages
+                obj.nextHold = obj.Vh(mod(obj.numEpochsCompleted+1,length(obj.Vh))+1);
+            end
+            epoch.addParameter('holdingPotential', obj.holdingPotential);
+             % Set the holding potential.
+            device = obj.rig.getDevice(obj.amp);
+            device.background = symphonyui.core.Measurement(...
+                obj.holdingPotential, device.background.displayUnits);
+
+            % Determine whether this is a dummy epoch (i.e. no stimulus).
+            isDummyEpoch = (mod(obj.numEpochsCompleted, obj.REPS_PER_HOLD) == 0);
+            if isDummyEpoch
+                epoch.shouldBePersisted = false;
+            else
+                epoch.shouldBePersisted = true;
+            end
             
             rguMean = obj.lmsToRgu * obj.lmsMeanIsom;
-            rguStdv = obj.lmsToRgu * obj.lmsStdvIsom;
+            rguStdv = obj.lmsToRgu * obj.lmsContrasts(obj.numEpochsCompleted+1, :);
             
             % Epoch parameters
             epoch.addParameter('lMean', rguMean(1));
@@ -171,6 +220,17 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
                 obj.interpulseInterval, obj.sampleRate);
         end
 
+        function completeEpoch(obj, epoch)
+            completeEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
+
+            % Set the Amp background to the next hold.
+            if (obj.numEpochsCompleted+1) < obj.numberOfAverages
+                device = obj.rig.getDevice(obj.amp);
+                device.background = symphonyui.core.Measurement(...
+                    obj.nextHold, device.background.displayUnits);
+            end
+        end
+
         function tf = shouldContinuePreparingEpochs(obj)
             tf = obj.numEpochsPrepared < obj.numberOfAverages;
         end
@@ -195,10 +255,6 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         function value = get.lmsMeanIsom(obj)
             value = [obj.lMeanIsom; obj.mMeanIsom; obj.sMeanIsom];
-        end
-        
-        function value = get.lmsStdvIsom(obj)
-            value = obj.lmsMeanIsom .* [obj.lContrast, obj.mContrast, obj.sContrast]';
         end
         
         function value = get.redLed(obj)
