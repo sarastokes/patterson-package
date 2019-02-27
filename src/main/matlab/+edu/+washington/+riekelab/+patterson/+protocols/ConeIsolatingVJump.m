@@ -41,6 +41,7 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
         holdingPotential
         nextHold
         Vh 
+        contrast
         lmsContrasts
     end
     
@@ -95,13 +96,17 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
+            
             obj.Vh = ones(obj.REPS_PER_HOLD, 1)*obj.voltageHolds + obj.ECl;
             obj.Vh = obj.Vh(:)';
             
-            lmsContrast = obj.lmsMeanIsom .* [obj.lContrast, obj.mContrast, 0]';
+            lmsContrast = obj.lmsMeanIsom .* [obj.lmContrast, obj.lmContrast, 0]';
             lmsContrast = cat(1, lmsContrast,... 
                 obj.lmsMeanIsom .* [0, 0, obj.sContrast]');
             obj.lmsContrasts = repmat(lmsContrast, [numel(obj.voltageHolds), 1]);
+            
+            rgb = edu.washington.riekelab.patterson.utils.multigradient(...
+                'preset', 'div.cb.spectral.9', 'length', numel(unique(obj.Vh))*2);
 
             % Setup the analysis figures
             if numel(obj.rig.getDeviceNames('Amp')) < 2
@@ -109,8 +114,8 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
                     obj.rig.getDevice(obj.amp),...
                     [obj.redLed, obj.greenLed, obj.uvLed]);
                 obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
-                    obj.rig.getDevice(obj.amp), 'groupBy', {},...
-                    'recordingType', obj.onlineAnalysis);
+                    obj.rig.getDevice(obj.amp), 'groupBy', {'contrast', 'holdingPotential'},...
+                    'recordingType', obj.onlineAnalysis, 'sweepColor', rgb);
                 if ~strcmp(obj.onlineAnalysis, 'none')
                     obj.showFigure('edu.washington.riekelab.patterson.figures.VJumpFigure',...
                         obj.rig.getDevice(obj.amp), obj.ECl, obj.Vh);
@@ -151,10 +156,10 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
 
             
             % Get the current contrast.
-            if length(obj.contrasts) > 1
-                obj.contrast = obj.allContrasts(mod(obj.numEpochsCompleted,length(obj.allContrasts))+1);
+            if length(obj.lmsContrasts) > 1
+                obj.contrast = obj.lmsContrasts(mod(obj.numEpochsCompleted,length(obj.lmsContrasts))+1);
             else
-                obj.contrast = obj.contrasts;
+                obj.contrast = obj.lmsContrasts;
             end
             epoch.addParameter('contrast', obj.contrast);
 
@@ -254,7 +259,7 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function value = get.lmsMeanIsom(obj)
-            value = [obj.lMeanIsom; obj.mMeanIsom; obj.sMeanIsom];
+            value = ones(3, 1) * obj.meanIsom;
         end
         
         function value = get.redLed(obj)
