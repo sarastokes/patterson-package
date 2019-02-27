@@ -258,6 +258,8 @@ function map=pmkmp(n,scheme)
 %  e-mail address: matteo@mycarta.ca
 %  Release: 2.0
 %  Release date: March 2012
+%
+% 25Feb2019 - SSP - Added black map for N=1 inputs to avoid throwing error
 
 
 % error checking, defaults, valid schemes
@@ -273,6 +275,13 @@ end
 if n>256
 error('Maximum number of 256 points for colormap exceeded');
 end
+
+%% 25Feb2019 - SSP
+if n == 1
+    map = [0, 0, 0];
+    return;
+end
+%% ---
 
 switch lower(scheme)
   case 'isol'
