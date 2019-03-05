@@ -64,6 +64,10 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
         rguToLms
     end
     
+    properties (Hidden, Constant)
+        LED_MAX = 9;
+    end
+    
     methods
         function didSetRig(obj)
             didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
@@ -100,6 +104,8 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             % Setup the analysis figures
+            obj.showFigure('edu.washington.riekelab.patterson.figures.LedRangeFigure',...
+                obj.rig.getDevice(obj.amp));
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('edu.washington.riekelab.patterson.figures.LedResponseFigure',...
                     obj.rig.getDevice(obj.amp),...
@@ -141,6 +147,12 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
             stim = gen.generate();
         end
         
+        function y = checkRange(obj, stim)
+            stimData = stim.getData();
+            y = 100 * (sum(stimData <= 0) + sum(stimData == obj.LED_MAX)) ...
+                / (obj.sampleRate * obj.stimTime / 1e3);
+        end
+        
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
@@ -155,16 +167,21 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
             epoch.addParameter('mContrast', rguStdv(2));
             epoch.addParameter('sContrast', rguStdv(3));
             
-            % Epoch LED stimuli
-            epoch.addStimulus(obj.redLed,...
-                obj.createLedStimulus(rguMean(1), rguStdv(1),...
-                obj.redLed.background.displayUnits));
-            epoch.addStimulus(obj.greenLed,...
-                obj.createLedStimulus(rguMean(2), rguStdv(2),...
-                obj.greenLed.background.displayUnits));
-            epoch.addStimulus(obj.uvLed,...
-                obj.createLedStimulus(rguMean(3), rguStdv(3),... 
-                obj.uvLed.background.displayUnits));
+            % Create and check LED stimuli
+            redStim = obj.createLedStimulus(rguMean(1), rguStdv(1),...
+                obj.redLed.background.displayUnits);
+            epoch.addParameter('redOutliers', obj.checkRange(redStim));
+            greenStim = obj.createLedStimulus(rguMean(2), rguStdv(2),...
+                obj.greenLed.background.displayUnits);
+            epoch.addParameter('greenOutliers', obj.checkRange(greenStim));
+            uvStim = obj.createLedStimulus(rguMean(3), rguStdv(3),... 
+                obj.uvLed.background.displayUnits);
+            epoch.addParameter('uvOutliers', obj.checkRange(uvStim));
+            
+            % Add LED stimuli to epoch
+            epoch.addStimulus(obj.redLed, redStim);
+            epoch.addStimulus(obj.greenLed, greenStim);
+            epoch.addStimulus(obj.uvLed, uvStim);
             
             % Epoch responses
             epoch.addResponse(obj.rig.getDevice(obj.amp));

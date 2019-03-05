@@ -1,10 +1,14 @@
 classdef ConeSweep < edu.washington.riekelab.protocols.RiekeLabProtocol
 % CONESWEEP
 %
+% Description:
+%   Runs through LMS, LM and S cone modulations
+%
 % History:
 %   ~Jun2016 - SSP
 %   24Jul2017 - SSP - much needed improvements, green led stimuli
 %   22Feb2019 - SSP - rewrote for rieke lab rigs
+% -------------------------------------------------------------------------
 
     properties 
         preTime = 500                   % Pulse leading duration (ms)
@@ -103,14 +107,15 @@ classdef ConeSweep < edu.washington.riekelab.protocols.RiekeLabProtocol
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             % Setup the analysis figures
+            obj.showFigure('edu.washington.riekelab.patterson.figures.LedRangeFigure',...
+                obj.rig.getDevice(obj.amp));
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('edu.washington.riekelab.patterson.figures.LedResponseFigure',...
                     obj.rig.getDevice(obj.amp),...
                     [obj.redLed, obj.greenLed, obj.uvLed]);
                 obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
                     obj.rig.getDevice(obj.amp), 'groupBy', {'currentCones'},...
-                    'recordingType', obj.onlineAnalysis, 'sweepColor', obj.STIM_COLORS);
-                
+                    'recordingType', obj.onlineAnalysis, 'sweepColor', flipud(obj.STIM_COLORS));
                 if strcmp(obj.onlineAnalysis, 'extracellular')
                     obj.showFigure('edu.washington.riekelab.patterson.figures.SpikeStatisticsFigure',...
                         obj.rig.getDevice(obj.amp),...
@@ -186,22 +191,20 @@ classdef ConeSweep < edu.washington.riekelab.protocols.RiekeLabProtocol
             epoch.addParameter('sContrast', rguStdv(3));
                         
             % Epoch LED stimuli
-            redStim = obj.createLedStimulus(...
-                rguMean(1), rguStdv(1), obj.redLed.background.displayUnits);
-            redOutliers = obj.checkRange(redStim);
+            redStim = obj.createLedStimulus(rguMean(1), rguStdv(1),...
+                obj.redLed.background.displayUnits);
+            epoch.addParameter('redOutliers', obj.checkRange(redStim));
             epoch.addStimulus(obj.redLed, redStim);
+            
             greenStim = obj.createLedStimulus(rguMean(2), rguStdv(2),...
                 obj.greenLed.background.displayUnits);
-            greenOutliers = obj.checkRange(greenStim);
+            epoch.addParameter('greenOutliers', obj.checkRange(greenStim));
             epoch.addStimulus(obj.greenLed, greenStim);
+            
             uvStim = obj.createLedStimulus(rguMean(3), rguStdv(3),...
                 obj.uvLed.background.displayUnits);
-            uvOutliers = obj.checkRange(uvStim);
+            epoch.addParameter('uvOutliers', obj.checkRange(uvStim));
             epoch.addStimulus(obj.uvLed, uvStim);
-
-            if obj.numEpochsPrepared < 2 && sum(redOutliers + greenOutliers + uvOutliers) > 0
-                warndlg('Prepared a stimulus exceeding LED range!');
-            end
 
             % Epoch responses
             epoch.addResponse(obj.rig.getDevice(obj.amp));

@@ -1,4 +1,12 @@
 classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
+    % CONEISOLATINGVJUMP
+    % 
+    % Description:
+    %   Presents LM and S-cone contrast steps at various holding potentials
+    %
+    % History:
+    %   5Mar2019 - SSP - works
+    % ---------------------------------------------------------------------
     
     properties       
         preTime = 500                   % Pulse leading duration (ms)
@@ -97,19 +105,22 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
+            % Holding potentials for each epoch
             obj.Vh = ones(obj.REPS_PER_HOLD, 1)*obj.voltageHolds + obj.ECl;
             obj.Vh = obj.Vh(:)';
             
-            lmsContrast = obj.lmsMeanIsom .* [obj.lmContrast, obj.lmContrast, 0]';
-            lmsContrast = cat(2, lmsContrast,... 
+            % Cone contrasts for each epoch
+            lmsContrast = cat(2, obj.lmsMeanIsom .* [obj.lmContrast, obj.lmContrast, 0]',... 
                 obj.lmsMeanIsom .* [0, 0, obj.sContrast]');
             lmsContrast = cat(1, zeros(1, 3), lmsContrast');
             obj.lmsContrasts = repmat(lmsContrast, [numel(obj.voltageHolds), 1]);
             
+            % Analysis figures
             rgb = edu.washington.riekelab.patterson.utils.multigradient(...
                 'preset', 'div.cb.spectral.9', 'length', numel(unique(obj.Vh))*2);
 
-            % Setup the analysis figures
+            obj.showFigure('edu.washington.riekelab.patterson.figures.LedRangeFigure',...
+                obj.rig.getDevice(obj.amp));
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('edu.washington.riekelab.patterson.figures.LedResponseFigure',...
                     obj.rig.getDevice(obj.amp),...
@@ -117,6 +128,10 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
                 obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
                     obj.rig.getDevice(obj.amp), 'groupBy', {'contrast', 'holdingPotential'},...
                     'recordingType', obj.onlineAnalysis, 'sweepColor', rgb);
+                obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure',...
+                        obj.rig.getDevice(obj.amp), {@mean, @var}, ...
+                        'baselineRegion', [0 obj.preTime], ...
+                        'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
                 if ~strcmp(obj.onlineAnalysis, 'none')
                     obj.showFigure('edu.washington.riekelab.patterson.figures.VJumpFigure',...
                         obj.rig.getDevice(obj.amp), obj.ECl, obj.Vh);
@@ -152,14 +167,20 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
 
             stim = gen.generate();
         end
+
+        function y = checkRange(obj, stim)
+            stimData = stim.getData();
+            y = 100 * (sum(stimData <= 0) + sum(stimData == obj.LED_MAX)) ...
+                / (obj.sampleRate * obj.stimTime / 1e3);
+        end
         
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
 
             obj.epochNum = obj.epochNum + 1;
-            epoch.addParameter('epochNum', obj.epochNum);
+            epoch.addParameter('epochNum', obj.epochNum);  % for debugging
             
-            % Get the current contrast.
+            % Epoch LMS-cone contrast
             if length(obj.lmsContrasts) > 1
                 obj.contrast = obj.lmsContrasts(obj.epochNum, :);
             else
@@ -167,13 +188,14 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
             epoch.addParameter('contrast', obj.contrast);
 
-            % Get the current holding potential.
-            obj.holdingPotential = obj.Vh(mod(obj.epochNum,length(obj.Vh))+1);
+            % Epoch holding potential
+            obj.holdingPotential = obj.Vh(mod(obj.epochNum, length(obj.Vh))+1);
             if (obj.epochNum) < obj.numberOfAverages
-                obj.nextHold = obj.Vh(mod(obj.epochNum,length(obj.Vh))+1);
+                obj.nextHold = obj.Vh(mod(obj.epochNum, length(obj.Vh))+1);
             end
             epoch.addParameter('holdingPotential', obj.holdingPotential);
-             % Set the holding potential.
+            
+            % Set the holding potential.
             device = obj.rig.getDevice(obj.amp);
             device.background = symphonyui.core.Measurement(...
                 obj.holdingPotential, device.background.displayUnits);
@@ -185,10 +207,9 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
                 epoch.shouldBePersisted = true;
             end
             
+            % Calculate stimulus parameters
             rguMean = obj.lmsToRgu * obj.lmsMeanIsom;
             rguStdv = obj.lmsToRgu * obj.lmsContrasts(obj.epochNum, :)';
-
-            % Epoch parameters
             epoch.addParameter('lMean', rguMean(1));
             epoch.addParameter('mMean', rguMean(2));
             epoch.addParameter('sMean', rguMean(3));
@@ -196,16 +217,21 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
             epoch.addParameter('mContrast', rguStdv(2));
             epoch.addParameter('sContrast', rguStdv(3));
             
-            % Epoch LED stimuli
-            epoch.addStimulus(obj.redLed,...
-                obj.createLedStimulus(rguMean(1), rguStdv(1),...
-                obj.redLed.background.displayUnits));
-            epoch.addStimulus(obj.greenLed,...
-                obj.createLedStimulus(rguMean(2), rguStdv(2),...
-                obj.greenLed.background.displayUnits));
-            epoch.addStimulus(obj.uvLed,...
-                obj.createLedStimulus(rguMean(3), rguStdv(3),... 
-                obj.uvLed.background.displayUnits));
+            % Create and check LED stimuli
+            redStim = obj.createLedStimulus(rguMean(1), rguStdv(1),...
+                obj.redLed.background.displayUnits);
+            epoch.addParameter('redOutliers', obj.checkRange(redStim));
+            greenStim = obj.createLedStimulus(rguMean(2), rguStdv(2),...
+                obj.greenLed.background.displayUnits);
+            epoch.addParameter('greenOutliers', obj.checkRange(greenStim));
+            uvStim = obj.createLedStimulus(rguMean(3), rguStdv(3),... 
+                obj.uvLed.background.displayUnits);
+            epoch.addParameter('uvOutliers', obj.checkRange(uvStim));
+            
+            % Add LED stimuli to epoch
+            epoch.addStimulus(obj.redLed, redStim);
+            epoch.addStimulus(obj.greenLed, greenStim);
+            epoch.addStimulus(obj.uvLed, uvStim);
             
             % Epoch responses
             epoch.addResponse(obj.rig.getDevice(obj.amp));
@@ -231,7 +257,6 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
         function completeEpoch(obj, epoch)
             completeEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
 
-            % Set the Amp background to the next hold.
             if (obj.numEpochsCompleted+1) < obj.numberOfAverages
                 device = obj.rig.getDevice(obj.amp);
                 device.background = symphonyui.core.Measurement(...

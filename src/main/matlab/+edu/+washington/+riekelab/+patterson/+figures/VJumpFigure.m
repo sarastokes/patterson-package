@@ -1,5 +1,14 @@
 classdef VJumpFigure < symphonyui.core.FigureHandler
-   
+% VJUMPFIGURE
+%
+% Description:
+%   2 plots of responses to LM and S cone modulations with one line per
+%   holding potential
+%
+% History:
+%   5Mar2019 - SSP - works
+% -------------------------------------------------------------------------
+
     properties
         device
         ECl
