@@ -94,7 +94,7 @@ classdef TotalResponseFigure < symphonyui.core.FigureHandler
             if ~epoch.hasResponse(obj.device)
                 error(['Epoch does not contain a response for ' obj.device.name]);
             end
-
+            
             obj.epochNum = obj.epochNum + 1;
             
             response = epoch.getResponse(obj.device);
