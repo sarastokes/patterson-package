@@ -43,6 +43,7 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
         Vh 
         contrast
         lmsContrasts
+        epochNum
     end
     
     properties (Hidden, Dependent)
@@ -96,13 +97,13 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
-            
             obj.Vh = ones(obj.REPS_PER_HOLD, 1)*obj.voltageHolds + obj.ECl;
             obj.Vh = obj.Vh(:)';
             
             lmsContrast = obj.lmsMeanIsom .* [obj.lmContrast, obj.lmContrast, 0]';
-            lmsContrast = cat(1, lmsContrast,... 
+            lmsContrast = cat(2, lmsContrast,... 
                 obj.lmsMeanIsom .* [0, 0, obj.sContrast]');
+            lmsContrast = cat(1, zeros(1, 3), lmsContrast');
             obj.lmsContrasts = repmat(lmsContrast, [numel(obj.voltageHolds), 1]);
             
             rgb = edu.washington.riekelab.patterson.utils.multigradient(...
@@ -135,6 +136,7 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
             obj.uvLed.background = symphonyui.core.Measurement(...
                 rguMean(3), obj.uvLed.background.displayUnits);
             
+            obj.epochNum = 0;
         end      
                 
         function stim = createLedStimulus(obj, ledMean, ledAmp, ledUnits)
@@ -154,19 +156,21 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
 
+            obj.epochNum = obj.epochNum + 1;
+            epoch.addParameter('epochNum', obj.epochNum);
             
             % Get the current contrast.
             if length(obj.lmsContrasts) > 1
-                obj.contrast = obj.lmsContrasts(mod(obj.numEpochsCompleted,length(obj.lmsContrasts))+1);
+                obj.contrast = obj.lmsContrasts(obj.epochNum, :);
             else
                 obj.contrast = obj.lmsContrasts;
             end
             epoch.addParameter('contrast', obj.contrast);
 
             % Get the current holding potential.
-            obj.holdingPotential = obj.Vh(mod(obj.numEpochsCompleted,length(obj.Vh))+1);
-            if (obj.numEpochsCompleted+1) < obj.numberOfAverages
-                obj.nextHold = obj.Vh(mod(obj.numEpochsCompleted+1,length(obj.Vh))+1);
+            obj.holdingPotential = obj.Vh(mod(obj.epochNum,length(obj.Vh))+1);
+            if (obj.epochNum) < obj.numberOfAverages
+                obj.nextHold = obj.Vh(mod(obj.epochNum,length(obj.Vh))+1);
             end
             epoch.addParameter('holdingPotential', obj.holdingPotential);
              % Set the holding potential.
@@ -175,16 +179,15 @@ classdef ConeIsolatingVJump < edu.washington.riekelab.protocols.RiekeLabProtocol
                 obj.holdingPotential, device.background.displayUnits);
 
             % Determine whether this is a dummy epoch (i.e. no stimulus).
-            isDummyEpoch = (mod(obj.numEpochsCompleted, obj.REPS_PER_HOLD) == 0);
-            if isDummyEpoch
+            if (mod(obj.epochNum-1, obj.REPS_PER_HOLD) == 0)
                 epoch.shouldBePersisted = false;
             else
                 epoch.shouldBePersisted = true;
             end
             
             rguMean = obj.lmsToRgu * obj.lmsMeanIsom;
-            rguStdv = obj.lmsToRgu * obj.lmsContrasts(obj.numEpochsCompleted+1, :);
-            
+            rguStdv = obj.lmsToRgu * obj.lmsContrasts(obj.epochNum, :)';
+
             % Epoch parameters
             epoch.addParameter('lMean', rguMean(1));
             epoch.addParameter('mMean', rguMean(2));
