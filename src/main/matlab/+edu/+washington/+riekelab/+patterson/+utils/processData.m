@@ -22,7 +22,9 @@ function response = processData(response, analysisType, varargin)
     switch analysisType
 
         case {'extracellular', 'spikes'}
-            response = edu.washington.riekelab.patterson.utils.wavefilter(response(:)', 6);
+            try
+                response = wavefilter(response(:)', 6);
+            end
             S = edu.washington.riekelab.patterson.utils.spikeDetectorOnline(response);
             spikesBinary = zeros(size(response));
             spikesBinary(S.sp) = 1;

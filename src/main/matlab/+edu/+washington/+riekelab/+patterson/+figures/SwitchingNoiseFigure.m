@@ -41,7 +41,7 @@ classdef SwitchingNoiseFigure < symphonyui.core.FigureHandler
         ADAPT_TIME = 250;
         FILTER_LEN = 500;
         
-        DEBUG = true;
+        DEBUG = false;
     end
     
     methods
