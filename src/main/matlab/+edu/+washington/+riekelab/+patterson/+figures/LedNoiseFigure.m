@@ -37,7 +37,7 @@ classdef LedNoiseFigure < symphonyui.core.FigureHandler
         ADAPT_TIME = 250;
         FILTER_LEN = 500;
         
-        DEBUG = true;
+        DEBUG = false;
     end
     
     methods
@@ -45,6 +45,7 @@ classdef LedNoiseFigure < symphonyui.core.FigureHandler
             obj.device = device;
             obj.led = led;
             obj.stimTime = stimTime;
+            disp('not debugging');
             
             ip = inputParser();
             ip.CaseSensitive = false;
@@ -107,8 +108,8 @@ classdef LedNoiseFigure < symphonyui.core.FigureHandler
             ylabel(obj.axesHandle(2), 'Measured');
             axis(obj.axesHandle(2), 'square');
             
-            pos = get(obj.figureHandle, 'Position');
-            set(obj.figureHandle, 'Position', [pos(1:3), pos(4)-100]);
+            %pos = get(obj.figureHandle, 'Position');
+            %set(obj.figureHandle, 'Position', [pos(1:3), pos(4)-100]);
             set(obj.figureHandle, 'Name', obj.figureTitle);
             
         end
@@ -131,9 +132,9 @@ classdef LedNoiseFigure < symphonyui.core.FigureHandler
                 response = edu.washington.riekelab.patterson.utils.processData(...
                     response, obj.recordingType, 'PreTime', obj.preTime);
             else
-                response = epoch.getResponse(obj.amp);
+                response = epoch.getResponse(obj.device);
                 response = response.getData();
-                sampleRate = response.sampleRate.quantityInBaseUnits;
+                sampleRate = 10000;
                 
                 response = edu.washington.riekelab.patterson.utils.processData(...
                     response, obj.recordingType, 'PreTime', obj.preTime);

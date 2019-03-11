@@ -125,6 +125,9 @@ classdef SwitchingNoiseFigure < symphonyui.core.FigureHandler
         function handleEpoch(obj, epoch)
             
             obj.epochNum = obj.epochNum + 1;
+            assignin('base', 'epoch', epoch);
+            assignin('base', 'obj', struct(obj));
+            
             if obj.DEBUG
                 groupInd = mod(obj.epochNum, 2) + 1;
                 S = load('LedNoiseData.mat');
