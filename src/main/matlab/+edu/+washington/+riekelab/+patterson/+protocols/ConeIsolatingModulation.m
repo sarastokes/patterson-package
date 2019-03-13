@@ -1,4 +1,4 @@
-classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabProtocol
+classdef ConeIsolatingModulation < edu.washington.riekelab.patterson.protocols.ConeIsolationProtocol
 % CONEISOLATINGMODULATION
 %
 % Description:
@@ -6,6 +6,7 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
 %
 % History:
 %   21Feb2019 - SSP
+%   11Mar2019 - SSP - Subclass ConeIsolationProtocol
 % -------------------------------------------------------------------------
 
     properties       
@@ -21,20 +22,10 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
         
         lContrast = 0                   % L-cone contrast ([-1, 1])
         mContrast = 0                   % M-cone contrast ([-1, 1])
-        sContrast = 0.3                 % S-cone contrast ([-1, 1])
+        sContrast = 0.5                 % S-cone contrast ([-1, 1])
         
         numberOfAverages = uint16(3)    % Number of epochs
         onlineAnalysis = 'none'         % Online analysis type
-              
-        redLedIsomPerVoltS = 38         % S-cone isom per red LED volt    
-        redLedIsomPerVoltM = 363        % M-cone isom per red LED volt
-        redLedIsomPerVoltL = 1744       % L-cone isom per red LED volt
-        greenLedIsomPerVoltS = 134      % S-cone isom per green LED volt
-        greenLedIsomPerVoltM = 1699     % M-cone isom per green LED volt
-        greenLedIsomPerVoltL = 1099     % L-cone isom per green LED volt
-        uvLedIsomPerVoltS = 2691        % S-cone isom per UV LED volt
-        uvLedIsomPerVoltM = 360         % M-cone isom per UV LED volt
-        uvLedIsomPerVoltL = 344         % L-cone isom per UV LED volt
         
         interpulseInterval = 0;         % Time between epochs (s)
         amp                             % Input amplifier
@@ -53,19 +44,8 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
     end
     
     properties (Hidden, Dependent)
-        redLed
-        greenLed
-        uvLed
-        
         lmsMeanIsom
         lmsStdvIsom
-        
-        lmsToRgu
-        rguToLms
-    end
-    
-    properties (Hidden, Constant)
-        LED_MAX = 9;
     end
     
     methods
@@ -101,15 +81,10 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
         end
         
         function prepareRun(obj)
-            prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
+            prepareRun@edu.washington.riekelab.patterson.protocols.ConeIsolationProtocol(obj);
             
             % Setup the analysis figures
-            obj.showFigure('edu.washington.riekelab.patterson.figures.LedRangeFigure',...
-                obj.rig.getDevice(obj.amp));
             if numel(obj.rig.getDeviceNames('Amp')) < 2
-                obj.showFigure('edu.washington.riekelab.patterson.figures.LedResponseFigure',...
-                    obj.rig.getDevice(obj.amp),...
-                    [obj.redLed, obj.greenLed, obj.uvLed]);
                 obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
                     obj.rig.getDevice(obj.amp), 'groupBy', {},...
                     'recordingType', obj.onlineAnalysis);
@@ -147,12 +122,6 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
             stim = gen.generate();
         end
         
-        function y = checkRange(obj, stim)
-            stimData = stim.getData();
-            y = 100 * (sum(stimData <= 0) + sum(stimData == obj.LED_MAX)) ...
-                / (obj.sampleRate * obj.stimTime / 1e3);
-        end
-        
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
@@ -170,13 +139,13 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
             % Create and check LED stimuli
             redStim = obj.createLedStimulus(rguMean(1), rguStdv(1),...
                 obj.redLed.background.displayUnits);
-            epoch.addParameter('redOutliers', obj.checkRange(redStim));
+            epoch.addParameter('redOutliers', obj.checkRange(redStim, obj.stimTime));
             greenStim = obj.createLedStimulus(rguMean(2), rguStdv(2),...
                 obj.greenLed.background.displayUnits);
-            epoch.addParameter('greenOutliers', obj.checkRange(greenStim));
+            epoch.addParameter('greenOutliers', obj.checkRange(greenStim, obj.stimTime));
             uvStim = obj.createLedStimulus(rguMean(3), rguStdv(3),... 
                 obj.uvLed.background.displayUnits);
-            epoch.addParameter('uvOutliers', obj.checkRange(uvStim));
+            epoch.addParameter('uvOutliers', obj.checkRange(uvStim, obj.stimTime));
             
             % Add LED stimuli to epoch
             epoch.addStimulus(obj.redLed, redStim);
@@ -216,15 +185,6 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
     
     % Dependent get/set methods
     methods
-        function value = get.rguToLms(obj)
-            value = [obj.redLedIsomPerVoltL, obj.greenLedIsomPerVoltL, obj.uvLedIsomPerVoltL; ...
-                obj.redLedIsomPerVoltM, obj.greenLedIsomPerVoltM, obj.uvLedIsomPerVoltM; ...
-                obj.redLedIsomPerVoltS, obj.greenLedIsomPerVoltS, obj.uvLedIsomPerVoltS];
-        end
-        
-        function value = get.lmsToRgu(obj)
-            value = inv(obj.rguToLms);
-        end
         
         function value = get.lmsMeanIsom(obj)
             value = [obj.lMeanIsom; obj.mMeanIsom; obj.sMeanIsom];
@@ -232,18 +192,6 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.protocols.RiekeLabPro
         
         function value = get.lmsStdvIsom(obj)
             value = obj.lmsMeanIsom .* [obj.lContrast, obj.mContrast, obj.sContrast]';
-        end
-        
-        function value = get.redLed(obj)
-            value = obj.rig.getDevice('Red LED');
-        end
-        
-        function value = get.greenLed(obj)
-            value = obj.rig.getDevice('Green LED');
-        end
-        
-        function value = get.uvLed(obj)
-            value = obj.rig.getDevice('UV LED');
         end
         
         function a = get.amp2(obj)
