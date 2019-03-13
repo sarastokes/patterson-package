@@ -108,10 +108,7 @@ classdef LedNoiseFigure < symphonyui.core.FigureHandler
             ylabel(obj.axesHandle(2), 'Measured');
             axis(obj.axesHandle(2), 'square');
             
-            %pos = get(obj.figureHandle, 'Position');
-            %set(obj.figureHandle, 'Position', [pos(1:3), pos(4)-100]);
             set(obj.figureHandle, 'Name', obj.figureTitle);
-            
         end
         
         function handleEpoch(obj, epoch)
