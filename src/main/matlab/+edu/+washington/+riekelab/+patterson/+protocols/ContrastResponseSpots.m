@@ -37,31 +37,34 @@ classdef ContrastResponseSpots < edu.washington.riekelab.protocols.RiekeLabStage
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
             if length(obj.spotContrast) > 1
-                colors = edu.washington.riekelab.patterson.utils.pmkmp(length(obj.spotContrast),'CubicYF');
+                rgb = edu.washington.riekelab.patterson.utils.othercolor(...
+                    'RdYlGn9', length(obj.spotContrast));
             else
-                colors = [0 0 0];
+                rgb = [0 0 0];
             end
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
             obj.showFigure('edu.washington.riekelab.patterson.figures.MeanResponseFigure',...
-                obj.rig.getDevice(obj.amp),'recordingType',obj.onlineAnalysis,...
-                'groupBy',{'currentSpotContrast'},...
-                'sweepColor',colors);
+                obj.rig.getDevice(obj.amp), 'recordingType', obj.onlineAnalysis,...
+                'groupBy',{'currentSpotContrast'}, 'sweepColor', rgb);
             obj.showFigure('edu.washington.riekelab.patterson.figures.FrameTimingFigure',...
                 obj.rig.getDevice('Stage'), obj.rig.getDevice('Frame Monitor'));
             if ~strcmp(obj.onlineAnalysis,'none')
                 % custom figure handler
-                if isempty(obj.analysisFigure) || ~isvalid(obj.analysisFigure)
-                    obj.analysisFigure = obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.contrastResponseAnalysis);
-                    f = obj.analysisFigure.getFigureHandle();
-                    set(f, 'Name', 'Contrast response function');
-                    obj.analysisFigure.userData.countByContrast = zeros(size(obj.spotContrast));
-                    obj.analysisFigure.userData.responseByContrast = zeros(size(obj.spotContrast));
-                    obj.analysisFigure.userData.axesHandle = axes('Parent', f);
-                else
-                    obj.analysisFigure.userData.countByContrast = zeros(size(obj.spotContrast));
-                    obj.analysisFigure.userData.responseByContrast = zeros(size(obj.spotContrast));
-                end
-                
+                % if isempty(obj.analysisFigure) || ~isvalid(obj.analysisFigure)
+                %     obj.analysisFigure = obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.contrastResponseAnalysis);
+                %     f = obj.analysisFigure.getFigureHandle();
+                %     set(f, 'Name', 'Contrast response function');
+                %     obj.analysisFigure.userData.countByContrast = zeros(size(obj.spotContrast));
+                %     obj.analysisFigure.userData.responseByContrast = zeros(size(obj.spotContrast));
+                %     obj.analysisFigure.userData.axesHandle = axes('Parent', f);
+                % else
+                %     obj.analysisFigure.userData.countByContrast = zeros(size(obj.spotContrast));
+                %     obj.analysisFigure.userData.responseByContrast = zeros(size(obj.spotContrast));
+                % end
+                obj.showFigure('edu.washington.riekelab.patterson.figures.OnsetOffsetFigure',...
+                    obj.rig.getDevice(obj.amp), obj.preTime, obj.stimTime,...
+                    obj.spotContrast, 'recordingType', obj.onlineAnalysis,...
+                    'xName', 'currentSpotContrast');
             end
             % Create spot contrast sequence.
             obj.spotContrastSequence = obj.spotContrast;
