@@ -4,7 +4,9 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
 % Description:
 %   Shows amp response with any associated LED stimuli
 %
-% 19Feb2019 - SSP
+% History:
+%   19Feb2019 - SSP
+%   11Mar2019 - SSP - Added rgu2lms check 
 % -------------------------------------------------------------------------
     
     properties
@@ -16,6 +18,9 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
         sweepColor
         ledColor
         storedSweepColor
+        
+        % Only for checks and plotting
+        rgu2lms
     end
     
     properties (Access = private)
@@ -42,11 +47,13 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
             addParameter(ip, 'sweepColor', 'k', @(x)ischar(x) || isvector(x));
             addParameter(ip, 'ledColor', obj.LED_COLORS, @(x)ischar(x) || ismatrix(x));
             addParameter(ip, 'storedSweepColor', 'r', @(x)ischar(x) || isvector(x));
+            addParameter(ip, 'rgu2lms', [], @ismatrix);
             parse(ip, varargin{:});
 
             obj.sweepColor = ip.Results.sweepColor;
             obj.storedSweepColor = ip.Results.storedSweepColor;
             obj.ledColor = ip.Results.ledColor;
+            obj.rgu2lms = ip.Results.rgu2lms;
             
             obj.createUI();
         end
@@ -60,6 +67,14 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
             
             % ------------------------------------------------- toolbar ---
             toolbar = findall(obj.figureHandle, 'Type', 'uitoolbar');
+            iconDir = [fileparts(fileparts(mfilename('fullpath'))), '\+icons\'];
+            
+            checkMatrixButton = uipushtool(...
+                'Parent', toolbar,...
+                'TooltipString', 'Check LED to isomerization matrix',...
+                'ClickedCallback', @obj.onSelectedCheckMatrix);
+            setIconImage(checkMatrixButton, [iconDir, 'colors.gif']);
+            
             storeSweepButton = uipushtool(...
                 'Parent', toolbar,...
                 'TooltipString', 'Store Sweep',...
@@ -78,7 +93,6 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
                 'Parent', toolbar,...
                 'TooltipString', 'Capture Figure',...
                 'ClickedCallback', @obj.onSelectedCaptureFigure);
-            iconDir = [fileparts(fileparts(mfilename('fullpath'))), '\+icons\'];
             setIconImage(captureFigureButton, [iconDir, 'picture.gif']);
             
             % ---------------------------------------------------- axes ---
@@ -204,6 +218,24 @@ classdef LedResponseFigure < symphonyui.core.FigureHandler
                     'HandleVisibility', 'off');
             end
             obj.storedSweep(store);
+        end
+        
+        function onSelectedCheckMatrix(obj, ~, ~)
+            if isempty(obj.rgu2lms)
+                return;
+            end
+            
+            ax = axes('Parent', figure());
+            edu.washington.riekelab.patterson.utils.heatmap(obj.rgu2lms,...
+                {'R', 'G', 'B'}, {'L', 'M', 'S'}, '%u',...
+                'ShowAllTicks', true);
+            colormap(ax, multigradient('preset', 'div.cb.spectral.9', 'length', 9));
+            set(ax, 'CLim', [0, max(obj.rgu2lms(:))],...
+                'TitleFontWeight', 'normal');
+            colorbar(ax);
+            axis(ax, 'square');
+            title(ax, 'Isomerizations Matrix');
+            figPos(gcf, 0.7, 0.7);
         end
 
         function onSelectedCaptureFigure(obj, ~, ~)
