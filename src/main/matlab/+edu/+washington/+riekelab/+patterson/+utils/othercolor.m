@@ -131,7 +131,10 @@ function c = othercolor(n,m)
 %   Author: Joshua Atkins
 %   Date: March 1, 2011
 
-types = who('-file','colorData.mat');
+% Changed loading of colorData.mat for Symphony
+
+
+% types = who('-file','colorData.mat');
 
 % if no colormap is choosen then display available colormaps
 if nargin < 1,
@@ -144,7 +147,8 @@ else
     if isnumeric(n), n = char(types(n)); end
         
     % load color data
-    data = load('colorData.mat',n);
+    utilDir = fileparts(mfilename('fullpath'));
+    data = load([utilDir, filesep, 'colorData.mat'], n);
     if isempty(fieldnames(data))
         c = [];
     else
