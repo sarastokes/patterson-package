@@ -34,7 +34,6 @@ classdef BarCentering < edu.washington.riekelab.protocols.RiekeLabStageProtocol
         orientation                     % Search axis in degrees
         sequence
         xaxis                           % Positions in microns
-        bkg
     end
     
     methods
@@ -85,13 +84,6 @@ classdef BarCentering < edu.washington.riekelab.protocols.RiekeLabStageProtocol
                 obj.orientation = 90;
                 obj.sequence = [obj.centerOffset(1)*ones(length(pos),1) pos+obj.centerOffset(2)];
             end
-            
-            if obj.backgroundIntensity == 0
-                obj.bkg = 0.5;
-            else
-                obj.bkg = obj.backgroundIntensity;
-            end
-            
         end
         
         function p = createPresentation(obj)
@@ -107,7 +99,7 @@ classdef BarCentering < edu.washington.riekelab.protocols.RiekeLabStageProtocol
             rect.size = barSizePix; 
             rect.orientation = obj.orientation;
             rect.position = canvasSize/2 + obj.position;
-            rect.color = obj.intensity*obj.bkg + obj.bkg;
+            rect.color = obj.intensity*obj.backgroundIntensity + obj.backgroundIntensity;
             p.addStimulus(rect);       
             
             % Control when the spot is visible.
@@ -123,15 +115,14 @@ classdef BarCentering < edu.washington.riekelab.protocols.RiekeLabStageProtocol
                 colorController = stage.builtin.controllers.PropertyController(rect, 'color',...
                     @(state)getBarSinewave(obj, state.time - obj.preTime * 1e-3));
             end
-            
             p.addController(colorController);
             
             function c = getBarSquarewave(obj, time)       
-                    c = obj.intensity * sign(sin(obj.temporalFrequency*time*2*pi)) * obj.bkg + obj.bkg;
+                    c = obj.intensity * sign(sin(obj.temporalFrequency*time*2*pi)) * obj.backgroundIntensity + obj.backgroundIntensity;
             end
             
             function c = getBarSinewave(obj, time)
-                c = obj.intensity * sin(obj.temporalFrequency*time*2*pi) * obj.bkg + obj.bkg;
+                c = obj.intensity * sin(obj.temporalFrequency*time*2*pi) * obj.backgroundIntensity + obj.backgroundIntensity;
             end
             
         end

@@ -1,5 +1,10 @@
 classdef ExpandingSpots < edu.washington.riekelab.protocols.RiekeLabStageProtocol
-    
+% EXPANDINGSPOTS
+%
+% From turner-package
+%
+% 27Mar2019 - SSP - Added OnsetOffsetFigure
+% -------------------------------------------------------------------------    
     properties
         preTime = 250 % ms
         stimTime = 250 % ms
@@ -51,6 +56,10 @@ classdef ExpandingSpots < edu.washington.riekelab.protocols.RiekeLabStageProtoco
                 obj.showFigure('edu.washington.riekelab.patterson.figures.AreaSummationFigure',...
                     obj.rig.getDevice(obj.amp), 'recordingType',obj.onlineAnalysis,...
                     'preTime', obj.preTime, 'stimTime', obj.stimTime);
+                obj.showFigure('edu.washington.riekelab.patterson.figures.OnsetOffsetFigure',...
+                    obj.rig.getDevice(obj.amp), obj.preTime, obj.stimTime,...
+                    obj.spotSizes, 'recordingType', obj.onlineAnalysis,...
+                    'xName', 'currentSpotSize');
             end
             % Create spot size sequence.
             obj.spotSizeSequence = obj.spotSizes;

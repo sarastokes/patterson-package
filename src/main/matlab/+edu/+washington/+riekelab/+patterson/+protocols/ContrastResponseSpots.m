@@ -49,18 +49,6 @@ classdef ContrastResponseSpots < edu.washington.riekelab.protocols.RiekeLabStage
             obj.showFigure('edu.washington.riekelab.patterson.figures.FrameTimingFigure',...
                 obj.rig.getDevice('Stage'), obj.rig.getDevice('Frame Monitor'));
             if ~strcmp(obj.onlineAnalysis,'none')
-                % custom figure handler
-                % if isempty(obj.analysisFigure) || ~isvalid(obj.analysisFigure)
-                %     obj.analysisFigure = obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.contrastResponseAnalysis);
-                %     f = obj.analysisFigure.getFigureHandle();
-                %     set(f, 'Name', 'Contrast response function');
-                %     obj.analysisFigure.userData.countByContrast = zeros(size(obj.spotContrast));
-                %     obj.analysisFigure.userData.responseByContrast = zeros(size(obj.spotContrast));
-                %     obj.analysisFigure.userData.axesHandle = axes('Parent', f);
-                % else
-                %     obj.analysisFigure.userData.countByContrast = zeros(size(obj.spotContrast));
-                %     obj.analysisFigure.userData.responseByContrast = zeros(size(obj.spotContrast));
-                % end
                 obj.showFigure('edu.washington.riekelab.patterson.figures.OnsetOffsetFigure',...
                     obj.rig.getDevice(obj.amp), obj.preTime, obj.stimTime,...
                     obj.spotContrast, 'recordingType', obj.onlineAnalysis,...
