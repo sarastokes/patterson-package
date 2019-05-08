@@ -17,7 +17,7 @@ classdef ConeSweep < edu.washington.riekelab.protocols.RiekeLabProtocol
         temporalFrequency = 2           % Hz
         temporalClass = 'sinewave'      % Temporal modulation type
 
-        coneContrast = 0.75             % Cone isolating contrast ([0, 1])
+        coneContrast = 0.7              % Cone isolating contrast ([0, 1])
         sMeanIsom = 2000                % Mean for S-cones (isomerizations)
         mMeanIsom = 2000                % Mean for M-cones (isomerizations)
         lMeanIsom = 2000                % Mean for L-cones (isomerizations)

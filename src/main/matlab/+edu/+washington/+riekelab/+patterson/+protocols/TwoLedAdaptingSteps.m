@@ -45,7 +45,6 @@ classdef TwoLedAdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtoco
     end
     
     properties (Constant, Hidden)
-        % TODO: Get real values for the Confocal rig
         LED_MAX = 9;
         LED_MIN = -9;
     end
@@ -80,7 +79,6 @@ classdef TwoLedAdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtoco
                     s = cell(2, 1);
                     [s{1}, s{2}] = obj.createLedStimulus(lastEpoch);
                 end
-                assignin('base', 'stim', s);
             end
         end
         

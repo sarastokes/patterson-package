@@ -81,6 +81,7 @@ classdef F1Figure < symphonyui.core.FigureHandler
 				'Parent', obj.figureHandle,...
 				'FontName', get(obj.figureHandle, 'DefaultUicontrolFontName'),...
 				'FontSize', get(obj.figureHandle, 'DefaultUicontrolFontSize'),...
+				'YScale', 'log',...
 				'XTickMode', 'auto',...
 				'Tag', 'F1Axis');
 			ylabel(obj.axHandle(1), 'F1 amplitude (spikes/sec)');
@@ -152,6 +153,9 @@ classdef F1Figure < symphonyui.core.FigureHandler
 			end
 
 			axis([obj.axHandle(1), obj.axHandle(2)], 'tight');
+			oldYLim = ylim(obj.axHandle(1));
+			ylim(obj.axHandle(1), [0.1, oldYLim(2)]);
+			
 		end
 	end
 

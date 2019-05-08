@@ -9,6 +9,8 @@ classdef (Abstract) ConeIsolationProtocol < edu.washington.riekelab.protocols.Ri
     % -------------------------------------------------------------------------
     
     properties
+        interpulseInterval = 0          % Duration between pulses (s)
+        
         redLedIsomPerVoltS = 38         % S-cone isom per red LED volt
         redLedIsomPerVoltM = 363        % M-cone isom per red LED volt
         redLedIsomPerVoltL = 1744       % L-cone isom per red LED volt
@@ -41,7 +43,6 @@ classdef (Abstract) ConeIsolationProtocol < edu.washington.riekelab.protocols.Ri
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
-            
             obj.showFigure('edu.washington.riekelab.patterson.figures.LedRangeFigure',...
                 obj.rig.getDevice(obj.amp));
             if numel(obj.rig.getDeviceNames('Amp')) < 2
@@ -50,10 +51,25 @@ classdef (Abstract) ConeIsolationProtocol < edu.washington.riekelab.protocols.Ri
                     [obj.redLed, obj.greenLed, obj.uvLed], 'rgu2lms', obj.rguToLms);
             end
         end
+         
+        function prepareInterval(obj, interval)
+            prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
+            
+            interval.addDirectCurrentStimulus(...
+                obj.redLed, obj.redLed.background,...
+                obj.interpulseInterval, obj.sampleRate);
+            interval.addDirectCurrentStimulus(...
+                obj.greenLed, obj.greenLed.background,... 
+                obj.interpulseInterval, obj.sampleRate);
+            interval.addDirectCurrentStimulus(...
+                obj.uvLed, obj.uvLed.background,...
+                obj.interpulseInterval, obj.sampleRate);
+        end
     end
     
-    methods
+    methods  % Helper functions
         function y = checkRange(obj, stim, stimTime)
+            % CHECKRANGE  Calculates percent stim time exceeding LED range
             stimData = stim.getData();
             y = 100 * (sum(stimData <= 0) + sum(stimData == obj.LED_MAX)) ...
                 / (obj.sampleRate * stimTime / 1e3);

@@ -2,7 +2,7 @@ classdef ConeIsolatingPulse < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties       
         preTime = 250                   % Pulse leading duration (ms)
-        stimTime = 250                   % Pulse duration (ms)
+        stimTime = 250                  % Pulse duration (ms)
         tailTime = 250                  % Pulse trailing duration (ms)
         
         sMeanIsom = 4000                % Mean for S-cones (isomerizations)

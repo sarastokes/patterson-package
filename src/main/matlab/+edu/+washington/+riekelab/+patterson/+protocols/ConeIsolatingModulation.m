@@ -22,12 +22,11 @@ classdef ConeIsolatingModulation < edu.washington.riekelab.patterson.protocols.C
         
         lContrast = 0                   % L-cone contrast ([-1, 1])
         mContrast = 0                   % M-cone contrast ([-1, 1])
-        sContrast = 0.5                 % S-cone contrast ([-1, 1])
+        sContrast = 0.7                 % S-cone contrast ([-1, 1])
         
         numberOfAverages = uint16(3)    % Number of epochs
         onlineAnalysis = 'none'         % Online analysis type
         
-        interpulseInterval = 0;         % Time between epochs (s)
         amp                             % Input amplifier
     end
     
